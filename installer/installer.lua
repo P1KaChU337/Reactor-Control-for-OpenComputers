@@ -2,20 +2,18 @@
 -- Author: P1KaChU337
 
 ------------------------------------ config ------------------------------------
-local REPOSITORY  = "https://pastebin.com/raw/80sWSQbc"
-local REPOSITORY2 = "https://pastebin.com/raw/tiaaP0a3"
-local IGOR_REPO   = "https://raw.githubusercontent.com/krovyaka/OpenComputers-Casino/refs/heads/master/external/IgorTimofeev/"
+local REPOSITORY  = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/refs/heads/main/"
 
 local filesToDownload = {
-  {url = IGOR_REPO.."/AdvancedLua.lua",             path="/lib/advancedLua.lua"},
-  {url = IGOR_REPO.."/Color.lua",                   path="/lib/color.lua"},
-  {url = IGOR_REPO.."/OCIF.lua",                    path="/lib/FormatModules/OCIF.lua"},
-  {url = IGOR_REPO.."/Image.lua",                   path="/lib/image.lua"},
-  {url = IGOR_REPO.."/DoubleBuffering.lua",         path="/lib/doubleBuffering.lua"},
-  {url = REPOSITORY2,                               path="/lib/event.lua"},
-  {url = REPOSITORY,                                path="/home/main.lua"},
-  {url = "https://www.dropbox.com/scl/fi/9rczzhtib49baghslif3t/reactorGUI.pic?rlkey=uk1697d73azhhx5p5hbuevwgq&st=pc0pyv2z&dl=1", path="/home/images/reactorGUI.pic"},
-  {url = "https://www.dropbox.com/scl/fi/nv6h4n1i3yan3tyu29lye/reactorGUI_white.pic?rlkey=pb8b5wkd3hp0hb0c89ajbicvs&st=zw6sajvw&dl=1", path="/home/images/reactorGUI_white.pic"},
+  {url = REPOSITORY.."/lib/advancedLua.lua",                path="/lib/advancedLua.lua"},
+  {url = REPOSITORY.."/lib/color.lua",                      path="/lib/color.lua"},
+  {url = REPOSITORY.."lib/OCIF.lua",                        path="/lib/FormatModules/OCIF.lua"},
+  {url = REPOSITORY.."/lib/image.lua",                      path="/lib/image.lua"},
+  {url = REPOSITORY.."/lib/doubleBuffering.lua",            path="/lib/doubleBuffering.lua"},
+  {url = REPOSITORY.."/lib/event.lua",                      path="/lib/event.lua"},
+  {url = REPOSITORY.."home/obf_nr_v1.0.lua",                path="/home/main.lua"},
+  {url = REPOSITORY.."home/images/reactorGUI.pic",          path="/home/images/reactorGUI.pic"},
+  {url = REPOSITORY.."home/images/reactorGUI_white.pic",    path="/home/images/reactorGUI_white.pic"},
 }
 local appTitle = "Reactor Control v1.0 — Installer"
 local rebootAfter = true
