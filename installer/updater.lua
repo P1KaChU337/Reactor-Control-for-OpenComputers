@@ -7,8 +7,14 @@ local REPOSITORY  = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Contro
 local filesToDownload = {
   {url = REPOSITORY.."home/obf_nr_v1.0.lua",                path="/home/main.lua"},
 }
-local newVer = "1.0"
-local oldVer = "1.0"
+local newVer = "1.1"
+local oldVer = nil
+local f = io.open("oldVersion.txt", "r")
+if f then
+  oldVer = f:read("*l") or "1.0"
+  f:close()
+  os.execute("rm oldVersion.txt > /dev/null 2>&1")
+end
 local appTitle = "Reactor Control v".. oldVer .. " --> v" .. newVer .. " — Updater"
 local rebootAfter = true
 -------------------------------------------------------------------------------

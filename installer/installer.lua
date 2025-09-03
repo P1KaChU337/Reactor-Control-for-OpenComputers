@@ -11,11 +11,11 @@ local filesToDownload = {
   {url = REPOSITORY.."/lib/image.lua",                      path="/lib/image.lua"},
   {url = REPOSITORY.."/lib/doubleBuffering.lua",            path="/lib/doubleBuffering.lua"},
   {url = REPOSITORY.."/lib/event.lua",                      path="/lib/event.lua"},
-  {url = REPOSITORY.."home/obf_nr_v1.0.lua",                path="/home/main.lua"},
+  {url = REPOSITORY.."home/obf_nr_v1.1.lua",                path="/home/main.lua"},
   {url = REPOSITORY.."home/images/reactorGUI.pic",          path="/home/images/reactorGUI.pic"},
   {url = REPOSITORY.."home/images/reactorGUI_white.pic",    path="/home/images/reactorGUI_white.pic"},
 }
-local appTitle = "Reactor Control v1.0 — Installer"
+local appTitle = "Reactor Control v1.1 — Installer"
 local rebootAfter = true
 -------------------------------------------------------------------------------
 local computer  = require("computer")
