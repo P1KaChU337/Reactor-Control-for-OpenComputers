@@ -5,7 +5,7 @@
 local REPOSITORY  = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/refs/heads/main/"
 
 local filesToDownload = {
-  {url = REPOSITORY.."home/obf_nr_v1.0.lua",                path="/home/main.lua"},
+  {url = REPOSITORY.."home/obf_nr_v1.1.lua",                path="/home/main.lua"},
 }
 local newVer = "1.1"
 local oldVer = "1.0"
@@ -191,4 +191,5 @@ if not ok then
   term.clear()
   io.stderr:write("Installer crashed: "..tostring(err).."\n")
 end
+
 
