@@ -8,7 +8,7 @@ local filesToDownload = {
   {url = REPOSITORY.."home/obf_nr_v1.0.lua",                path="/home/main.lua"},
 }
 local newVer = "1.1"
-local oldVer = nil
+local oldVer = "1.0"
 local f = io.open("oldVersion.txt", "r")
 if f then
   oldVer = f:read("*l") or "1.0"
@@ -191,3 +191,4 @@ if not ok then
   term.clear()
   io.stderr:write("Installer crashed: "..tostring(err).."\n")
 end
+
