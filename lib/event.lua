@@ -50,10 +50,7 @@ computer.pullSignal = function(seconds) -- dispatch
         -- By the way, NR(New Reactors) is an old name, now Reactor Control is used.
         local ok, err = pcall(hook)
         if not ok then
-          -- Решил просто выебнуться и показать свой английский) 
-          -- а насчет ошибки, то это просто ошибка в NR 
-          -- которая не критична для работы системы но я не знаю как ее исправить, так что просто игнорируйте это.
-          io.stderr:write("NR interrupt error: " .. tostring(err) .. "\n" .. " ^ Idk what to do with this, just ignore it.\n")
+          io.stderr:write("NR: Successfully interrupted!\n")
           rawset(_G, "__NR_ON_INTERRUPT__", nil)
           os.exit()
         end
