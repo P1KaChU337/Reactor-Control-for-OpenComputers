@@ -4,6 +4,11 @@
 
 ---
 
+## Changelog
+Подробные изменения смотрите в [CHANGELOG.md](./CHANGELOG.md).
+
+---
+
 ## Описание
 
 Reactor Control позволяет:
