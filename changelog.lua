@@ -40,6 +40,7 @@ return {
   {
     version = "1.1.2",
     changes = {
+      "ОТКРЫЛ ИСХОДНИКИ, ВСЁ РАДУЙСТЕСЬ :3",
       "Добавлена поддержка чат-команд через Chat Box",
       "Новые команды: @help, @status, @start, @stop, @setporog, @info, @exit, @useradd, @userdel, @restart",
       "Улучшена обработка UTF-8 символов в сообщениях",
