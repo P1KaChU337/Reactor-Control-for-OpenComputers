@@ -11,7 +11,7 @@ local filesToDownload = {
   {url = REPOSITORY.."/lib/image.lua",                      path="/lib/image.lua"},
   {url = REPOSITORY.."/lib/doubleBuffering.lua",            path="/lib/doubleBuffering.lua"},
   {url = REPOSITORY.."/lib/event.lua",                      path="/lib/event.lua"},
-  {url = REPOSITORY.."home/obf_nr_v1.1.lua",                path="/home/main.lua"},
+  {url = REPOSITORY.."home/nr_v1.1.lua",                path="/home/main.lua"},
   {url = REPOSITORY.."home/images/reactorGUI.pic",          path="/home/images/reactorGUI.pic"},
   {url = REPOSITORY.."home/images/reactorGUI_white.pic",    path="/home/images/reactorGUI_white.pic"},
 }
@@ -191,3 +191,4 @@ if not ok then
   term.clear()
   io.stderr:write("Installer crashed: "..tostring(err).."\n")
 end
+
