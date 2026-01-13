@@ -1,9 +1,4 @@
--- [ Reactor Control v1.1.2 by P1KaChU337 ] 
--- Да радуйтесь, я вам открыл исходники, пользуйтесь на здоровье главное не удаляйте мой никнейм, и информацию о Boosty  
--- не забывайте про меня когда будете пиратить программу, а то я вас найду и отрублю вам руки, шучу конечно 
--- но всё же помните про меня, я старался для вас, спасибо что пользуетесь моей программой, удачи вам и вашим реакторам!
-
--- В будущем я создам свои либы, код в разы уменьшится, и вы сможете использовать мои либы уже в своих проектах
+-- Reactor Control v1.1 build 3
 
 -- ----------------------------------------------------------------------------------------------------
 local computer = require("computer")
@@ -24,7 +19,7 @@ buffer.clear(0x000000)
 local lastTime = computer.uptime()
 local exit = false
 local version = "1.1"
-local build = "2"
+local build = "3"
 local progVer = version .. "." .. build
 
 local imagesFolder = "/home/images/" -- Путь к изображению
@@ -52,6 +47,7 @@ if not fs.exists(configPath) then
         file:write("theme = false -- (false темная, true светлая)\n\n")
         file:write("updateCheck = true -- (false не проверять на наличие обновлений, true проверять обновления)\n\n")
         file:write("debugLog = false\n\n")
+        file:write("isFirstStart = true\n\n")
         file:write("-- После внесение изменений сохраните данные (Ctrl+S) и выйдите из редактора (Ctrl+W)\n")
         file:write("-- Если в будущем захотите поменять данные то пропишите \"cd data\" затем \"edit config.lua\"\n")
         file:close()
@@ -113,10 +109,24 @@ local reason = nil
 local depletionTime = 0
 local consumeSecond = 0
 local supportersText = nil
+local MeSecond = 0
 
 local isChatBox = component.isAvailable("chat_box") or false
 local chatBox = isChatBox and component.chat_box or nil
 local chatThread = nil
+local chatCommands = {
+    ["@help"] = true,
+    ["@status"] = true,
+    ["@setporog"] = true,
+    ["@start"] = true,
+    ["@stop"] = true,
+    ["@restart"] = true,
+    ["@exit"] = true,
+    ["@changelog"] = true,
+    ["@useradd"] = true,
+    ["@userdel"] = true,
+    ["@info"] = true
+}
 
 local widgetCoords = {
     {10, 6}, {36, 6}, {65, 6}, {91, 6},
@@ -125,12 +135,17 @@ local widgetCoords = {
 }
 
 local config = {
-    clickArea1 = {x1=9, y1=45, x2=34, y2=46},
-    clickArea2 = {x1=9, y1=48, x2=34, y2=49},
-    clickArea3 = {x1=37, y1=48, x2=58, y2=49},
-    clickArea4 = {x1=37, y1=45, x2=58, y2=46},
-    clickArea5 = {x1=60, y1=45, x2=78, y2=46},
-    clickArea6 = {x1=60, y1=48, x2=78, y2=49},
+    clickArea19 = {x1=4,  y1=44, x2=9,  y2=46}, -- Кнопка 🔧 (x:5, y:44)
+    clickArea20 = {x1=4,  y1=47, x2=9,  y2=49}, -- Кнопка ⓘ (x:5, y:47)
+
+    clickArea1  = {x1=12,  y1=44, x2=37, y2=46}, -- Отключить реакторы (x:13, y:44)
+    clickArea2  = {x1=12,  y1=47, x2=37, y2=49}, -- Рестарт программы (x:13, y:47)
+
+    clickArea4  = {x1=40, y1=44, x2=64, y2=46}, -- Запуск реакторов (x:41, y:44)
+    clickArea3  = {x1=40, y1=47, x2=64, y2=49}, -- Выход из программы (x:41, y:47)
+
+    clickArea5  = {x1=67, y1=44, x2=86, y2=46}, -- Обновить МЭ (x:68, y:44)
+    clickArea6  = {x1=67, y1=47, x2=86, y2=49}, -- Метрика (x:68, y:47)
     -- Координаты для кнопок на виджетах
     clickArea7 = {x1=widgetCoords[1][1]+5, y1=widgetCoords[1][2]+9, x2=widgetCoords[1][1]+11, y2=widgetCoords[1][2]+10}, -- Реактор 1
     clickArea8 = {x1=widgetCoords[2][1]+5, y1=widgetCoords[2][2]+9, x2=widgetCoords[2][1]+11, y2=widgetCoords[2][2]+10}, -- Реактор 2
@@ -310,6 +325,8 @@ local button1 = {
     {1,1,0,1,0,0,0,0},
     {1,1,1,0,0,0,0,0},
     {1,1,1,1,0,0,0,0},
+    {1,1,1,1,1,1,1,0},
+    {1,1,1,1,1,1,0,1},
 }
 
 local button1_push = {
@@ -323,10 +340,19 @@ local button1_push = {
 }
 
 local brail_status = {
-    {0,0,0,1,1,1,1,1},
+    {0,0,0,1,1,1,1,1}, -- Уголки
     {0,0,1,0,1,1,1,1},
     {1,1,1,1,1,0,0,0},
     {1,1,1,1,0,1,0,0},
+}
+
+local brail_fields = {
+    {0,0,0,0,0,1,1,1},
+    {0,0,0,0,1,0,1,1},
+    {1,1,1,0,0,0,0,0},
+    {1,1,0,1,0,0,0,0},
+    {1,1,0,0,1,1,1,1},
+    {1,1,1,1,0,0,0,0},
 }
 local brail_verticalbar = {
     {0,0,0,0,0,0,1,1},
@@ -372,6 +398,7 @@ local function saveCfg(param)
     file:write(string.format("theme = %s -- Тема интерфейса (false тёмная, true светлая)\n\n", tostring(theme)))
     file:write(string.format("updateCheck = %s -- (false не проверять на наличие обновлений, true проверять обновления)\n\n", tostring(updateCheck)))
     file:write(string.format("debugLog = %s\n\n", tostring(debugLog)))
+    file:write(string.format("isFirstStart = %s\n\n", tostring(isFirstStart)))
     file:write("-- После внесение изменений сохраните данные (Ctrl+S) и выйдите из редактора (Ctrl+W)\n")
     file:write("-- Для запуска основой программы перейдите в домашнюю директорию \"cd ..\", и напишите \"main.lua\"\n")
     
@@ -478,6 +505,7 @@ local function drawDigit(x, y, braill, color)
     buffer.drawText(x + 1, y + 1, color, brailleChar(braill[4]))
 end
 
+-- Работа с текстом
 local function centerText(text, totalWidth)
     local textLen = unicode.len(text)
     local pad = math.floor((totalWidth - textLen) / 2)
@@ -492,6 +520,14 @@ local function shortenNameCentered(name, maxLength)
     end
     return centerText(name, maxLength)
 end
+
+-- local function centerMSG(x, y, msg, color)
+--     local len = unicode.len(msg)
+--     local startX = x - math.floor(len / 2)
+--     buffer.drawText(startX, y, color, msg)
+--     buffer.drawChanges()
+-- end
+
 -- ----------------------------------------------------------------------------------------------------
 local function animatedButton(push, x, y, text, tx, ty, length, time, clearWidth, color, textcolor)
     local btn = push == 1 and button1 or button1_push
@@ -914,9 +950,10 @@ local maxWidth = 33
 
 -- функция бегущей строки
 local function drawMarquee(x, y, text, color)
-    local textLength = unicode.len(text)
+    local textLength = unicode.len(text) -- считаем символы, а не байты
 
     if textLength > maxWidth then
+        -- видимый кусок
         local visible = unicode.sub(text, scrollPos, scrollPos + maxWidth - 1)
 
         local visibleLen = unicode.len(visible)
@@ -981,19 +1018,24 @@ local function message(msg, colormsg, limit, noStack)
     limit = limit or 34
     msg = tostring(msg)
 
+    -- режем сообщение
     local parts = wrapText(msg, limit)
 
     local found = false
 
     if not noStack then
+        -- ищем совпадение среди последних строк
         for i = #consoleLines, 11, -1 do
             local line = consoleLines[i]
             if line.textBase == msg then
                 line.count = (line.count or 1) + 1
 
+                -- пересобираем все части, икс только на последней
                 local lastPart = parts[#parts] .. "(x" .. line.count .. ")"
 
+                -- если влезает → заменяем последнюю строку
                 if utf8len(lastPart) <= limit then
+                    -- обновляем существующие строки
                     for j = 1, #parts - 1 do
                         local idx = i - (#parts - j)
                         if consoleLines[idx] then
@@ -1009,12 +1051,13 @@ local function message(msg, colormsg, limit, noStack)
         end
     end
 
+    -- если не нашли или не влезло → добавляем как новые строки
     if not found then
         for _, part in ipairs(parts) do
             table.remove(consoleLines, 1)
             table.insert(consoleLines, {
                 text = part,
-                textBase = msg,
+                textBase = msg, -- вся строка как ключ для стака
                 color = colormsg,
                 count = 1
             })
@@ -1033,9 +1076,7 @@ local function userUpdate()
 
     if #users == 0 then
         message("Компьютер не защищен!", colors.msgwarn, 34)
-        message("Перейдите по директории \"cd data\"", colors.msgwarn, 34)
-        message("и напишите \"edit config.lua\"", colors.msgwarn, 34)
-        message("Добавьте никнеймы в users", colors.msgwarn, 34)
+        message("Перейдите в настройки и добавьте никнеймы в белый список", colors.msgwarn, 34)
     end
 
     local desiredUsers = {}
@@ -1080,6 +1121,7 @@ local function safeCall(proxy, method, default, ...)
     if proxy and proxy[method] then
         local ok, result = pcall(proxy[method], proxy, ...)
         if ok and result ~= nil then
+            -- Для числовых значений по умолчанию гарантируем возврат числа
             if type(default) == "number" then
                 local numberResult = tonumber(result)
                 if numberResult then
@@ -1111,7 +1153,7 @@ local function safeCall(proxy, method, default, ...)
             end
 
             if debugLog == true then
-                message("'" .. method .. "': " .. tostring(result), colors.msgerror, 34)
+                message("'" .. method .. "': " .. tostring(result), colors.msgwarn, 34)
             end
 
             -- Убрал рекурсивный вызов safeCall чтобы избежать потенциальной бесконечной рекурсии
@@ -1165,7 +1207,7 @@ local function drawTimeInfo()
     -- ---------------------------------------------------------------------------
     buffer.drawRectangle(127, fl_y1+2, 12, 2, colors.bg, 0, " ")
     
-    drawNumberWithText(134, fl_y1+2, (me_network and (60 - second) or 0), 2, colors.textclr, "Sec", colors.textclr)
+    drawNumberWithText(134, fl_y1+2, (me_network and (60 - MeSecond) or 0), 2, colors.textclr, "Sec", colors.textclr)
     
     buffer.drawRectangle(140, fl_y1+2, 18, 2, colors.bg, 0, " ")
 
@@ -1228,17 +1270,20 @@ local function drawStatic()
     if picture then
         buffer.drawImage(1, 1, picture)
     else
-        buffer.drawText(1, 1, colors.msgerror, "Ошибка загрузки изображения!")
+        buffer.drawText(1, 1, colors.msgerror, "Ошибка загрузки изображения! Проверьте наличие файлов 'image/reactorGUI.pic'")
         return
     end
-    animatedButton(1, 10, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
-    animatedButton(1, 38, 44, "Запуск реакторов!", nil, nil, 24, nil, nil, 0x35e525)
-    animatedButton(1, 66, 44, "Переключить тему", nil, nil, 18, nil, nil, nil)
-    animatedButton(1, 10, 47, "Рестарт программы.", nil, nil, 24, nil, nil, colors.whitebtn)
-    animatedButton(1, 38, 47, "Выход из программы.", nil, nil, 24, nil, nil, colors.whitebtn)
-    animatedButton(1, 66, 47, "Метрика: " .. status_metric, nil, nil, 18, nil, nil, colors.whitebtn)
+    animatedButton(1, 5, 44, "🔧", nil, nil, 4, nil, nil, 0xa91df9, 0xffffff)
+    animatedButton(1, 5, 47, "ⓘ", nil, nil, 4, nil, nil, 0xa91df9, 0x05e2ff)
+    animatedButton(1, 13, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
+    animatedButton(1, 41, 44, "Запуск реакторов!", nil, nil, 23, nil, nil, 0x35e525)
+    animatedButton(1, 68, 44, "Пр.Обновить МЭ", nil, nil, 18, nil, nil, nil)
+    animatedButton(1, 13, 47, "Рестарт программы.", nil, nil, 24, nil, nil, colors.whitebtn)
+    animatedButton(1, 41, 47, "Выход из программы.", nil, nil, 23, nil, nil, colors.whitebtn)
+    animatedButton(1, 68, 47, "Метрика: " .. status_metric, nil, nil, 18, nil, nil, colors.whitebtn)
 
-    buffer.drawText(13, 50, (theme and 0xc3c3c3 or 0x666666), "Reactor Control v" .. version .. " | Author: VK: @p1kachu337, Discord: @p1kachu337 | Поддержать проект: https://boosty.to/p1kachu337")
+    buffer.drawText(123, 50, (theme and 0xc3c3c3 or 0x666666), "Reactor Control v" .. version .. "." .. build .. " by P1KaChU337")
+    -- buffer.drawText(130, 50, (theme and 0xc3c3c3 or 0x666666), "by P1KaChU337") -- Контакты: VK: @p1kachu337, Discord: p1kachu337 TG: @sh1zurz
     
     buffer.drawChanges()
 end
@@ -1264,41 +1309,50 @@ local function drawStatus(num)
         reactors = 12
     end
 
-    buffer.drawRectangle(87, 44, 31, 6, colors.bg, 0, " ")
-    buffer.drawText(88, 44, colors.textclr, "Статус комплекса:")
+    -- Сдвиг x с 87 на 89
+    buffer.drawRectangle(89, 44, 31, 6, colors.bg, 0, " ")
+    -- Сдвиг x с 88 на 90
+    buffer.drawText(90, 44, colors.textclr, "Статус комплекса:")
+    
     for i = 0, 31 - 1 do
-        buffer.drawText(87 + i, 43, colors.bg, brailleChar(brail_console[1]))
+        -- Сдвиг x с 87 на 89
+        buffer.drawText(89 + i, 43, colors.bg, brailleChar(brail_console[1]))
     end
     for i = 0, 31 - 1 do
-        buffer.drawText(87 + i, 45, colors.bg2, brailleChar(brail_console[2]))
+        -- Сдвиг x с 87 на 89
+        buffer.drawText(89 + i, 45, colors.bg2, brailleChar(brail_console[2]))
     end
-    buffer.drawText(108, 45, colors.bg2, brailleChar(brail_cherta[5]))
-    buffer.drawText(108, 46, colors.bg2, brailleChar(brail_cherta[6]))
-    buffer.drawText(108, 47, colors.bg2, brailleChar(brail_cherta[6]))
-    buffer.drawText(108, 48, colors.bg2, brailleChar(brail_cherta[6]))
-    buffer.drawText(108, 49, colors.bg2, brailleChar(brail_cherta[6]))
 
-    buffer.drawText(88, 46, colors.textclr, "Кол-во реакторов: " .. reactors)
+    -- Сдвиг x с 108 на 110
+    buffer.drawText(110, 45, colors.bg2, brailleChar(brail_cherta[5]))
+    buffer.drawText(110, 46, colors.bg2, brailleChar(brail_cherta[6]))
+    buffer.drawText(110, 47, colors.bg2, brailleChar(brail_cherta[6]))
+    buffer.drawText(110, 48, colors.bg2, brailleChar(brail_cherta[6]))
+    buffer.drawText(110, 49, colors.bg2, brailleChar(brail_cherta[6]))
 
-    buffer.drawText(88, 47, colors.textclr, "Общее потребление")
-    buffer.drawText(88, 48, colors.textclr, "жидкости: " .. consumeSecond .. " Mb/s")
+    -- Сдвиг x с 88 на 90
+    buffer.drawText(90, 46, colors.textclr, "Кол-во реакторов: " .. reactors)
+    buffer.drawText(90, 47, colors.textclr, "Общее потребление")
+    buffer.drawText(90, 48, colors.textclr, "жидкости: " .. consumeSecond .. " Mb/s")
 
     if any_reactor_on == true then
-        buffer.drawRectangle(110, 47, 6, 1, 0x61ff52, 0, " ")
-        buffer.drawRectangle(111, 46, 4, 3, 0x61ff52, 0, " ")
-        buffer.drawText(110, 46, 0x61ff52, brailleChar(brail_status[1]))
-        buffer.drawText(115, 46, 0x61ff52, brailleChar(brail_status[2]))
-        buffer.drawText(115, 48, 0x61ff52, brailleChar(brail_status[3]))
-        buffer.drawText(110, 48, 0x61ff52, brailleChar(brail_status[4]))
-        buffer.drawText(111, 47, 0x0d9f00, "Work") 
+        -- Сдвиг координат индикатора (110->112, 111->113, 115->117)
+        buffer.drawRectangle(112, 47, 6, 1, 0x61ff52, 0, " ")
+        buffer.drawRectangle(113, 46, 4, 3, 0x61ff52, 0, " ")
+        buffer.drawText(112, 46, 0x61ff52, brailleChar(brail_status[1]))
+        buffer.drawText(117, 46, 0x61ff52, brailleChar(brail_status[2]))
+        buffer.drawText(117, 48, 0x61ff52, brailleChar(brail_status[3]))
+        buffer.drawText(112, 48, 0x61ff52, brailleChar(brail_status[4]))
+        buffer.drawText(113, 47, 0x0d9f00, "Work") 
     else
-        buffer.drawRectangle(110, 47, 6, 1, 0xfd3232, 0, " ")
-        buffer.drawRectangle(111, 46, 4, 3, 0xfd3232, 0, " ")
-        buffer.drawText(110, 46, 0xfd3232, brailleChar(brail_status[1]))
-        buffer.drawText(115, 46, 0xfd3232, brailleChar(brail_status[2]))
-        buffer.drawText(115, 48, 0xfd3232, brailleChar(brail_status[3])) 
-        buffer.drawText(110, 48, 0xfd3232, brailleChar(brail_status[4]))
-        buffer.drawText(111, 47, 0x9d0000, "Stop")
+        -- Сдвиг координат индикатора (110->112, 111->113, 115->117)
+        buffer.drawRectangle(112, 47, 6, 1, 0xfd3232, 0, " ")
+        buffer.drawRectangle(113, 46, 4, 3, 0xfd3232, 0, " ")
+        buffer.drawText(112, 46, 0xfd3232, brailleChar(brail_status[1]))
+        buffer.drawText(117, 46, 0xfd3232, brailleChar(brail_status[2]))
+        buffer.drawText(117, 48, 0xfd3232, brailleChar(brail_status[3])) 
+        buffer.drawText(112, 48, 0xfd3232, brailleChar(brail_status[4]))
+        buffer.drawText(113, 47, 0x9d0000, "Stop")
     end
 
     buffer.drawChanges()
@@ -1631,6 +1685,18 @@ local function stop(num)
     end
 end
 
+local function silentstop(num) -- Ещё один костыльчик
+    for i = num or 1, num or reactors do
+        local proxy = reactors_proxy[i]
+        local rType = reactor_type[i]
+        safeCall(proxy, "deactivate")
+        reactor_work[i] = false
+        if any_reactor_on == false then
+            work = false
+        end
+    end
+end
+
 local function updateMeProxy()
     if component.isAvailable("me_controller") then
         me_proxy = component.proxy(component.list("me_controller")())
@@ -1642,6 +1708,7 @@ local function updateMeProxy()
 end
 
 local function checkFluid()
+    MeSecond = 0
     if not me_network then
         offFluid = true
         reason = "МЭ не найдена!"
@@ -1830,8 +1897,624 @@ local function logError(err)
     end
 end
 
--- -------------------------------------------------------------------------------------------------------------------------------------
+-- -----------------------------------------------------[MD.GUI Functions]--------------------------------------------------------------
 
+-- --------------------------------[SWITCH]----------------------------------------
+local function drawSwitch(x, y, w, pipePos, state, activeClr, passiveClr, pipeClr, bgClr)
+    local activeCol = activeClr or 0x0088ff
+    local passiveCol = passiveClr or 0x444444
+    local pipeCol = pipeClr or 0xFFFFFF
+    local bgCol = bgClr or 0xcccccc
+
+    -- Очищаем область под ним (опционально, если фон однотонный)
+    buffer.drawRectangle(x, y, w, 1, bgCol, 0, " ") 
+
+    -- Левый край
+    if pipePos > 1 then
+        buffer.drawText(x, y, activeCol, "◖")
+    end
+    -- Правый край
+    if pipePos < w - 1 then
+        buffer.drawText(x + w - 1, y, passiveCol, "◗")
+    end
+    -- Фон
+    if pipePos - 1 > 0 then
+        buffer.drawRectangle(x + 1, y, pipePos - 1, 1, activeCol, 0, " ")
+    end
+    if w - pipePos - 1 > 0 then
+        buffer.drawRectangle(x + pipePos, y, w - pipePos - 1, 1, passiveCol, 0, " ")
+    end
+    -- Ползунок
+    buffer.drawText(x + pipePos - 1, y, pipeCol, "◖")
+    buffer.set(x + pipePos, y, pipeCol, pipeCol, " ")
+    buffer.drawText(x + pipePos + 1, y, pipeCol, "◗")
+end
+
+-- ------------------------------[SEARCH FIELD]------------------------------------
+local searchFields = {}
+local function createSearchField(x, y, width, placeholder, hidden, clr, bgclr, placeholderClr)
+    table.insert(searchFields, {
+        x = x,
+        y = y,
+        width = width,
+        placeholder = placeholder or "Введите текст...",
+        text = "",
+        cursorPos = 1,
+        scrollOffset = 0,
+        cursorVisible = false,
+        lastBlink = computer.uptime(),
+        active = false,
+        hidden = (hidden and true or false),
+        clr = clr or 0x444444,
+        bgclr = bgclr or 0xcccccc,
+        placeholderClr = placeholderClr or 0xececec,
+    })
+end
+
+local function removeSearchField(index)
+    if searchFields[index] then
+        table.remove(searchFields, index)
+    end
+end
+
+
+-- функция отрисовки одного поля
+local function drawSearchField(field)
+    local fieldColor = field.clr
+    local fieldBgColor = field.bgclr
+    local placeholderColor = field.placeholderClr
+    local fieldTextColor = 0xffffff
+
+    buffer.drawRectangle(field.x, field.y, field.width, 1, fieldColor, fieldBgColor, " ")
+    buffer.drawRectangle(field.x+1, field.y-1, field.width-2, 1, fieldColor, fieldBgColor, brailleChar(brail_fields[6]))
+    buffer.drawRectangle(field.x+1, field.y+1, field.width-2, 1, fieldColor, fieldBgColor, brailleChar(brail_fields[5]))
+    buffer.drawText(field.x, field.y-1, fieldColor, brailleChar(brail_fields[1]))
+    buffer.drawText(field.x, field.y+1, fieldColor, brailleChar(brail_fields[4]))
+    buffer.drawText(field.x + field.width-1, field.y-1, fieldColor, brailleChar(brail_fields[2]))
+    buffer.drawText(field.x + field.width-1, field.y+1, fieldColor, brailleChar(brail_fields[3]))
+
+    local visibleText
+    local maxVisible = field.width - 2
+    local startX, startY = field.x + 1, field.y
+
+    if not field.active then
+        if field.text == "" then
+            -- плейсхолдер
+            buffer.drawText(startX, startY, placeholderColor, centerText(field.placeholder, field.width))
+        else
+            buffer.drawText(startX, startY, placeholderColor, shortenNameCentered((field.hidden and string.rep("*", unicode.len(field.text:sub(field.scrollOffset + 1, field.scrollOffset + maxVisible))) or field.text), maxVisible))
+        end
+    else
+        -- скролл текста
+        if field.cursorPos - field.scrollOffset > maxVisible then
+            field.scrollOffset = field.cursorPos - maxVisible
+        elseif field.cursorPos <= field.scrollOffset then
+            field.scrollOffset = math.max(0, field.cursorPos - 1)
+        end
+        if field.hidden == true then
+            visibleText = string.rep("*", unicode.len(field.text:sub(field.scrollOffset + 1, field.scrollOffset + maxVisible)))
+        else
+            visibleText = field.text:sub(field.scrollOffset + 1, field.scrollOffset + maxVisible)
+        end
+
+        -- вывод текста
+        buffer.drawText(startX, startY, fieldTextColor, visibleText)
+
+        if field.cursorVisible then
+            local cursorX = startX + (field.cursorPos - 1 - field.scrollOffset)
+            buffer.drawText(cursorX, startY, fieldTextColor, "|")
+        end
+    end
+end
+
+-- функция отрисовки всех полей
+local function drawAllFields()
+    for _, f in ipairs(searchFields) do
+        drawSearchField(f)
+    end
+    buffer.drawChanges()
+end
+
+local function removeAllFields()
+    for i = #searchFields, 1, -1 do
+        removeSearchField(i)
+    end
+    buffer.drawChanges()
+end
+-- --------------------------------------------------------------------------------
+
+-- -----------------------------------------------------[MODAL WINDOWS]-----------------------------------------------------------------
+-- -----------------------------{SETTINGS MENU}------------------------------------
+local function drawSettingsMenu()
+    local isSaved = false
+    local isStart = false
+    if work == true and any_reactor_on == true then
+        isStart = true
+        stop()
+    end
+
+    local modalX, modalY, modalW, modalH = 35, 10, 65, 23 -- Размеры модального окна, w - ширина, h - высота
+    local old = buffer.copy(1, 1, 160, 50)
+    buffer.drawRectangle(1, 1, 160, 50, 0x000000, 0, " ", 0.4)
+    buffer.drawRectangle(modalX, modalY, modalW, modalH, 0xcccccc, 0, " ")
+    buffer.drawRectangle(modalX-1, modalY+1, modalW+2, modalH-2, 0xcccccc, 0, " ")
+    local cornerPos = {
+        {modalX-1, modalY, 1}, {modalX+modalW, modalY, 2},
+        {modalX+modalW, modalY+modalH-1, 3}, {modalX-1, modalY+modalH-1, 4}
+    }
+    for _, c in ipairs(cornerPos) do
+        buffer.drawText(c[1], c[2], 0xcccccc, brailleChar(brail_status[c[3]]))
+    end
+    removeAllFields()
+    -- Заголовки
+    buffer.drawText(modalX + 11, modalY + 1, 0x000000, "Меню настроек приложения ReactorControl v" .. version .. "." .. build)
+
+    buffer.drawText(modalX + 7, modalY + 3, 0x000000, "Порог жидкости")
+    createSearchField(modalX + 3, modalY + 5, 22, "Введите порог(Mb)")
+    searchFields[1].text = tostring(porog)
+    local offset = unicode.len(searchFields[1].text) + 1
+    searchFields[1].cursorPos = offset
+
+    buffer.drawText(modalX + 5, modalY + 7, 0x000000, "Тема по умолчанию")
+    animatedButton(1, modalX + 4, modalY + 8, "Светлая      ", nil, nil, 20, nil, nil, 0x444444, 0xffffff)
+    local sw1_x, sw1_y, sw1_w = modalX+16, modalY+9, 7
+    local sw1_state = theme -- текущее состояние
+    local sw1_pipePos = (sw1_state and (sw1_w - 2) or 1)   -- позиция (1 - лево, sw1_w-2 - право)
+    drawSwitch(sw1_x, sw1_y, sw1_w, sw1_pipePos, sw1_state, nil, 0x777777, nil, 0x444444)
+
+    buffer.drawText(modalX + 3, modalY + 11, 0x000000, "Новые версии приложения")
+    animatedButton(1, modalX + 4, modalY + 12, "Проверять        ", nil, nil, 20, nil, nil, 0x444444, 0xffffff)
+    local sw2_x, sw2_y, sw2_w = modalX+16, modalY+13, 7
+    local sw2_state = updateCheck -- текущее состояние
+    local sw2_pipePos = (sw2_state and (sw2_w - 2) or 1)   -- позиция (1 - лево, sw2_w-2 - право)
+    drawSwitch(sw2_x, sw2_y, sw2_w, sw2_pipePos, sw2_state, nil, 0x777777, nil, 0x444444)
+
+    buffer.drawText(modalX + 3, modalY + 15, 0x000000, "Расширенное логирование")
+    animatedButton(1, modalX + 4, modalY + 16, "Включенно         ", nil, nil, 20, nil, nil, 0x444444, 0xffffff)
+    local sw3_x, sw3_y, sw3_w = modalX+16, modalY+17, 7
+    local sw3_state = debugLog -- текущее состояние
+    local sw3_pipePos = (sw3_state and (sw3_w - 2) or 1)   -- позиция (1 - лево, sw3_w-2 - право)
+    drawSwitch(sw3_x, sw3_y, sw3_w, sw3_pipePos, sw3_state, nil, 0x777777, nil, 0x444444)
+
+    -- nickname widget
+    local function drawNicknameWidget(placeholder, clr)
+        if placeholder == nil then
+            placeholder = "Введите никнейм"
+        end
+        buffer.drawText(modalX + 29, modalY + 3, 0x000000, "Игроки добавленные в белый список:")
+        local winX, winY, winW, winH = modalX+30, modalY+4, 32, 18
+        buffer.drawRectangle(winX, winY, winW, 1, 0x333333, 0, " ")
+        buffer.drawRectangle(winX-1, winY+1, winW+2, winH-2, 0x333333, 0, " ")
+
+        buffer.drawRectangle(winX, winY, winW, 1, 0x333333, 0xcccccc, brailleChar(button1[7]))
+        buffer.drawRectangle(winX, winY+(winH-1), winW, 1, 0x333333, 0xcccccc, " ")
+
+        local winCornerPos = {
+            {winX-1, winY, 4}, {winX+winW, winY, 2},
+            {winX+winW, winY+winH-1, 8}, {winX-1, winY+winH-1, 9}
+        }
+        for _, c in ipairs(winCornerPos) do
+            buffer.drawText(c[1], c[2], 0x333333, brailleChar(button1[c[3]]))
+        end
+
+        local maxRows = 14
+        local startY = modalY + 4
+        for i = 1, maxRows do
+            local y = startY + i
+            local bg = (i % 2 == 0) and 0x444444 or 0x555555
+
+            buffer.drawRectangle(winX, y, winW, 1, bg, 0, " ")
+
+            local name = users[i]
+            if name then
+                buffer.drawText(modalX + 33, y, 0xffffff, shortenNameCentered(name, winW - 7))
+                buffer.drawText(modalX + 58, y, 0xff2121, "Del")
+            else
+                buffer.drawText(modalX + 31, y, 0xcbcbcb, shortenNameCentered("* Пусто *", winW - 2))
+            end
+        end
+        removeSearchField(2)
+        createSearchField(modalX + 30, modalY + 20, 24, placeholder, false, 0x353535, 0x333333, clr)
+        animatedButton(1, modalX + 56, modalY + 19, "ADD", nil, nil, 5, nil, nil, 0x37c72a, 0xffffff) -- 0x21ff21
+        drawAllFields()
+    end
+
+    local function nicknameExists(nick)
+        for _, user in ipairs(users) do
+            if user == nick then
+                return true
+            end
+        end
+        return false
+    end
+    -- function msgModal(x, y, w, h, color, text, textclr)
+    --     local winX, winY, winW, winH = x, y, w, h
+    --     buffer.drawRectangle(winX, winY, winW, winH-2, color, 0x3a3a3a, brailleChar(button1[7]))
+
+    --     buffer.drawRectangle(winX-1, winY+1, winW+2, winH-2, color, 0, " ")
+
+    --     buffer.drawRectangle(winX, winY+(winH-1), winW, 1, color, 0x3a3a3a, brailleChar(button1[1]))
+
+    --     local winCornerPos = {
+    --         {winX-1, winY, 4}, {winX+winW, winY, 2},
+    --         {winX+winW, winY+winH-1, 6}, {winX-1, winY+winH-1, 5}
+    --     }
+    --     for _, c in ipairs(winCornerPos) do
+    --         buffer.drawText(c[1], c[2], color, brailleChar(button1[c[3]]))
+    --     end
+    --     buffer.drawText(winX, winY+1, textclr or 0x000000, text)
+    -- end
+    -- ---------
+
+    buffer.drawText(modalX + 1, modalY + modalH - 1, 0x999999, "P.S. Нажмите в любом месте вне окна, чтобы выйти без сохранения")
+    animatedButton(1, modalX + 5, modalY + modalH - 4, "Сохранить и выйти", nil, nil, 18, nil, nil, 0x8100cc, 0xffffff)
+
+    drawNicknameWidget()
+
+    local themetoggle = theme
+
+    local NSporog = porog
+    local NSTheme = theme
+    local NSUpdateCheck = updateCheck
+    local NSDebugLog = debugLog
+    local NSusers = {}
+    for _, u in ipairs(users) do
+        table.insert(NSusers, u)
+    end
+
+    while true do
+        local eventData = {event.pull(0.05)}
+        local eventType = eventData[1]
+
+        -- Блинкер
+        for _, f in ipairs(searchFields) do
+            if f.active and computer.uptime() - f.lastBlink >= 0.5 then
+                f.cursorVisible = not f.cursorVisible
+                f.lastBlink = computer.uptime()
+                drawAllFields()
+            end
+        end
+
+        if eventType == "touch" then
+            local _, _, x, y, button, uuid = table.unpack(eventData)
+
+            for i, f in ipairs(searchFields) do
+                if y == f.y and x >= f.x and x <= f.x + f.width - 1 then
+                    -- активация полей
+                    for _, f2 in ipairs(searchFields) do
+                        f2.active, f2.cursorVisible = false, false
+                    end
+                    f.active = true
+                    f.cursorVisible = true
+                    f.lastBlink = computer.uptime()
+                else
+                    -- снимаем активность если клик не по полю
+                    if f.active then
+                        f.active = false
+                        f.cursorVisible = false
+                    end
+                end
+            end
+            drawAllFields()
+
+            for i, user in ipairs(users) do
+                local rowY = modalY + 4 + i
+                if y == rowY and x >= modalX + 58 and x <= modalX + 61 then
+                    -- Удаляем никнейм из белого списка
+                    buffer.drawText(modalX + 58, y, 0xff2121, "Del")
+                    buffer.drawChanges()
+                    os.sleep(0.2)
+                    buffer.drawText(modalX + 58, y, 0xcc0000, "Del")
+                    local delNick = users[i]
+                    table.remove(users, i)
+                    drawNicknameWidget()
+                    buffer.drawChanges()
+                    break
+                end
+            end
+            -- ----------------------------------------------------------
+
+            if x < modalX-1 or x > modalX + modalW or y < modalY or y > (modalY-1) + modalH then    
+                buffer.paste(1, 1, old)
+                buffer.drawChanges()
+                if isStart == true then
+                    start()
+                end
+                theme = NSTheme
+                porog = NSporog
+                updateCheck = NSUpdateCheck
+                debugLog = NSDebugLog
+                users = NSusers
+                saveCfg()
+                break
+            end
+
+            if x >= sw1_x and x <= sw1_x + sw1_w - 1 and y == sw1_y then
+                sw1_state = not sw1_state
+                
+                -- Анимация (простая)
+                local targetPos = sw1_state and (sw1_w - 2) or 1
+                local step = (targetPos > sw1_pipePos) and 1 or -1
+                
+                repeat
+                    sw1_pipePos = sw1_pipePos + step
+                    drawSwitch(sw1_x, sw1_y, sw1_w, sw1_pipePos, sw1_state, nil, 0x777777, nil, 0x444444)
+                    buffer.drawChanges()
+                    os.sleep(0.02)
+                until sw1_pipePos == targetPos
+                
+            elseif x >= sw2_x and x <= sw2_x + sw2_w - 1 and y == sw2_y then
+                sw2_state = not sw2_state
+                
+                -- Анимация (простая)
+                local targetPos = sw2_state and (sw2_w - 2) or 1
+                local step = (targetPos > sw2_pipePos) and 1 or -1
+                
+                repeat
+                    sw2_pipePos = sw2_pipePos + step
+                    drawSwitch(sw2_x, sw2_y, sw2_w, sw2_pipePos, sw2_state, nil, 0x777777, nil, 0x444444)
+                    buffer.drawChanges()
+                    os.sleep(0.02)
+                until sw2_pipePos == targetPos
+                
+                -- Тут можно добавить действие при переключении
+                -- example: check_updates = sw_state
+            elseif x >= sw3_x and x <= sw3_x + sw3_w - 1 and y == sw3_y then
+                sw3_state = not sw3_state
+                -- Анимация (простая)
+                local targetPos = sw3_state and (sw3_w - 2) or 1
+                local step = (targetPos > sw3_pipePos) and 1 or -1
+                
+                repeat
+                    sw3_pipePos = sw3_pipePos + step
+                    drawSwitch(sw3_x, sw3_y, sw3_w, sw3_pipePos, sw3_state, nil, 0x777777, nil, 0x444444)
+                    buffer.drawChanges()
+                    os.sleep(0.02)
+                until sw3_pipePos == targetPos
+                
+                -- Тут можно добавить действие при переключении
+                -- example: debug_log = sw_state
+            elseif y >= modalY + 19 and y <= modalY + 21 and x >= modalX + 55 and x <= modalX + 56+5 then
+                -- Добавляем никнейм в белый список
+                animatedButton(1, modalX + 56, modalY + 19, "ADD", nil, nil, 5, nil, nil, 0x21ff21, 0xffffff) -- 0x21ff21
+                animatedButton(2, modalX + 56, modalY + 19, "ADD", nil, nil, 5, nil, nil, 0x21ff21, 0xffffff) -- 0x21ff21
+                buffer.drawChanges()
+                os.sleep(0.2)
+                animatedButton(1, modalX + 56, modalY + 19, "ADD", nil, nil, 5, nil, nil, 0x37c72a, 0xffffff) -- 0x21ff21
+                local placehold
+                local placeclr
+                local newNick = searchFields[2].text:match("^%s*(.-)%s*$") -- trim
+                if newNick == "" then
+                    -- buffer.drawText(modalX + 30, modalY + 20, 0xff0000, "Никнейм не может быть пустым!")
+                    -- msgModal(modalX + 18, modalY + 24, 29, 3, 0xcccccc, "Никнейм не может быть пустым!", 0xff0000)
+                    placehold = "Не может быть пустым!"
+                    placeclr = 0xff0000
+                elseif #newNick > 16 then
+                    -- message("Никнейм не может быть длиннее 16 символов!", colors.msgwarn, 34)
+                    placehold = "Нельзя > 16 символов!"
+                    placeclr = 0xff0000
+                elseif nicknameExists(newNick) then
+                    -- buffer.drawText(modalX + 3, modalY + 22, 0xff0000, "Никнейм уже в белом списке!")
+                    placehold = "Уже в белом списке!"
+                    placeclr = 0xff0000
+                elseif #newNick < 3 then
+                    -- message("Никнейм не может быть короче 2 символов!", colors.msgwarn, 34)
+                    placehold = "Не меньше 3 символов!"
+                    placeclr = 0xff0000
+                else
+                    table.insert(users, newNick)
+                end
+                drawNicknameWidget(placehold, placeclr)
+                
+            elseif y >= modalY + modalH - 4 and y <= modalY + modalH - 2 and x >= modalX + 4 and x <= modalX + (5+18) then
+                buffer.drawRectangle(modalX + 4, modalY + modalH - 4, 19, 3, 0xcccccc, 0, " ")
+                animatedButton(1, modalX + 5, modalY + modalH - 4, "Сохранить и выйти", nil, nil, 18, nil, nil, 0xa91df9, 0xffffff)
+                animatedButton(2, modalX + 5, modalY + modalH - 4, "Сохранить и выйти", nil, nil, 18, nil, nil, 0xa91df9, 0xffffff)
+                buffer.drawChanges()
+                os.sleep(0.2)
+                animatedButton(1, modalX + 5, modalY + modalH - 4, "Сохранить и выйти", nil, nil, 18, nil, nil, 0x8100cc, 0xffffff)
+                buffer.drawChanges()
+                -- Сохраняем настройки
+                porog = tonumber(searchFields[1].text) or porog
+                theme = sw1_state
+                updateCheck = sw2_state
+                debugLog = sw3_state
+                saveCfg()
+                
+                switchTheme()
+                drawStatic()
+                drawDynamic()
+                userUpdate()
+                message("Настройки сохранены!", nil, 34)
+                break
+            end
+
+            -- ----------------------------------------------------------
+
+        elseif eventType == "key_down" then
+            local _, _, char, code = table.unpack(eventData)
+            for i, f in ipairs(searchFields) do
+                if f.active then
+                    if code == 14 then -- Backspace
+                        if f.cursorPos > 1 then
+                            f.text = f.text:sub(1, f.cursorPos - 2) .. f.text:sub(f.cursorPos)
+                            f.cursorPos = f.cursorPos - 1
+                        end
+                    elseif code == 203 then -- стрелка влево
+                        if f.cursorPos > 1 then
+                            f.cursorPos = f.cursorPos - 1
+                        end
+                    elseif code == 205 then -- стрелка вправо
+                        if f.cursorPos <= #f.text then
+                            f.cursorPos = f.cursorPos + 1
+                        end
+                    elseif char >= 32 and char <= 126 then -- Печатаемые символы
+                        if i == 1 then -- Поле порога жидкости - только цифры
+                            local c = string.char(char)
+                            if c:match("%d") then
+                                f.text = f.text:sub(1, f.cursorPos - 1)
+                                    .. c
+                                    .. f.text:sub(f.cursorPos)
+                                f.cursorPos = f.cursorPos + 1
+                            end
+                        else -- всё остальное - любые символы
+                            local c = string.char(char) 
+                            f.text = f.text:sub(1, f.cursorPos - 1) .. c .. f.text:sub(f.cursorPos) 
+                            f.cursorPos = f.cursorPos + 1 
+                        end
+                    elseif code == 28 then -- Enter
+                        f.active = false
+                        f.cursorVisible = false
+                    end
+                end
+            end
+            drawAllFields()
+        end
+    end
+end
+
+-- -------------------------------{TEST MENU}--------------------------------------
+local function testMenu()
+    local isStart = false
+    if work == true and any_reactor_on == true then
+        isStart = true
+        stop()
+    end
+    local old = buffer.copy(1, 1, 160, 50)
+    buffer.drawRectangle(1, 1, 160, 50, 0x000000, 0, " ", 0.4)
+
+    buffer.drawRectangle(7, 4, 110, 37, 0xcccccc, 0, " ")
+    buffer.drawRectangle(6, 5, 112, 35, 0xcccccc, 0, " ")
+    local cornerPos = {
+        {6, 4, 1}, {117, 4, 2},
+        {117, 40, 3}, {6, 40, 4}
+    }
+    for _, c in ipairs(cornerPos) do
+        buffer.drawText(c[1], c[2], 0xcccccc, brailleChar(brail_status[c[3]]))
+    end
+    buffer.drawText(51, 5, 0x000000, "Меню настроек приложения") -- ✕ ◖⨷◗
+    buffer.drawText(43, 6, 0x000000, "Нажмите \"ОК\" для продолжения.")
+    
+    removeAllFields()
+    createSearchField(20, 15, 32, "Введите никнейм(клик)")
+    createSearchField(20, 15+3, 32, "Введи текст чушпан...")
+    createSearchField(20, 15+6, 32, "Скрытый текст, епта", true)
+
+    animatedButton(1, 70, 25, "Сохранить", nil, nil, 11, nil, nil, 0x8100cc, 0xffffff)  
+    
+    -- Параметры нашего ползунка
+    local sw_x, sw_y, sw_w = 50, 25, 6
+    local sw_state = false -- текущее состояние
+    local sw_pipePos = (sw_state and (sw_w - 2) or 1)   -- позиция (1 - лево, sw_w-2 - право)
+    drawSwitch(sw_x, sw_y, sw_w, sw_pipePos, sw_state)
+    drawAllFields()
+
+    buffer.drawChanges()
+    while true do
+        local eventData = {event.pull(0.05)}
+        local eventType = eventData[1]
+
+        for _, f in ipairs(searchFields) do
+            if f.active and computer.uptime() - f.lastBlink >= 0.5 then
+                f.cursorVisible = not f.cursorVisible
+                f.lastBlink = computer.uptime()
+                drawAllFields()
+            end
+        end
+
+        if eventType == "touch" then
+            local _, _, x, y, button, uuid = table.unpack(eventData)
+
+            for i, f in ipairs(searchFields) do
+                if y == f.y and x >= f.x and x <= f.x + f.width - 1 then
+                    if i == 1 then
+                        searchFields[1].text = uuid or "" -- или nickname
+                        searchFields[1].active = false
+                        searchFields[1].cursorVisible = false
+                    else
+                        -- обычная активация остальных полей
+                        for _, f2 in ipairs(searchFields) do
+                            f2.active, f2.cursorVisible = false, false
+                        end
+                        f.active = true
+                        f.cursorVisible = true
+                        f.lastBlink = computer.uptime()
+                    end
+                else
+                    -- снимаем активность если клик не по полю
+                    if f.active then
+                        f.active = false
+                        f.cursorVisible = false
+                    end
+                end
+            end
+            drawAllFields()
+
+            if y >= 25 and y <= 27 and x >= 69 and x <= 76+5 then
+                buffer.drawRectangle(69, 25, 7, 3, 0xcccccc, 0, " ")
+                animatedButton(1, 70, 25, "Сохранить", nil, nil, 11, nil, nil, 0xa91df9, 0xffffff)
+                animatedButton(2, 70, 25, "Сохранить", nil, nil, 11, nil, nil, 0xa91df9, 0xffffff)
+                buffer.drawChanges()
+                os.sleep(0.2)
+                animatedButton(1, 70, 25, "Сохранить", nil, nil, 11, nil, nil, 0x8100cc, 0xffffff)
+                buffer.drawChanges()
+
+                buffer.paste(1, 1, old)
+                buffer.drawChanges()
+                message("Настройки сохранены!", nil, 34)
+                break
+            end
+            if x >= sw_x and x <= sw_x + sw_w - 1 and y == sw_y then
+                sw_state = not sw_state
+                
+                -- Анимация (простая)
+                local targetPos = sw_state and (sw_w - 2) or 1
+                local step = (targetPos > sw_pipePos) and 1 or -1
+                
+                repeat
+                    sw_pipePos = sw_pipePos + step
+                    drawSwitch(sw_x, sw_y, sw_w, sw_pipePos, sw_state)
+                    buffer.drawChanges()
+                    os.sleep(0.02)
+                until sw_pipePos == targetPos
+                
+                -- Тут можно добавить действие при переключении
+                -- example: reactor_auto_mode = sw_state
+            end
+
+        elseif eventType == "key_down" then
+            local _, _, char, code = table.unpack(eventData)
+            for _, f in ipairs(searchFields) do
+                if f.active then
+                    if code == 14 then -- Backspace
+                        if f.cursorPos > 1 then
+                            f.text = f.text:sub(1, f.cursorPos - 2) .. f.text:sub(f.cursorPos)
+                            f.cursorPos = f.cursorPos - 1
+                        end
+                    elseif code == 203 then -- стрелка влево
+                        if f.cursorPos > 1 then
+                            f.cursorPos = f.cursorPos - 1
+                        end
+                    elseif code == 205 then -- стрелка вправо
+                        if f.cursorPos <= #f.text then
+                            f.cursorPos = f.cursorPos + 1
+                        end
+                    elseif char >= 32 and char <= 126 then
+                        local c = string.char(char)
+                        f.text = f.text:sub(1, f.cursorPos - 1) .. c .. f.text:sub(f.cursorPos)
+                        f.cursorPos = f.cursorPos + 1
+                    elseif code == 28 then -- Enter
+                        f.active = false
+                        f.cursorVisible = false
+                    end
+                end
+            end
+            drawAllFields()
+        end
+    end
+end
+
+-- -----------------------------------------------------
 local function checkVer()
     if updateCheck == true then
         local update = false
@@ -1995,6 +2678,7 @@ local function loadChangelog(url, tmpFile)
 end
 
 local function handleChatCommand(nick, msg, args)
+    -- Проверяем разрешения пользователя
     local hasPermission = false
     for _, user in ipairs(users) do
         if user == nick then
@@ -2010,12 +2694,13 @@ local function handleChatCommand(nick, msg, args)
         return
     end
     
-    if msg:match("^@help") then
+    -- Обрабатываем команды
+    if msg == "@help" then
         if isChatBox then
             chatBox.say("§e=== Команды Reactor Control ===")
             chatBox.say("§a@help - список команд")
             chatBox.say("§a@info - информация о системе")
-            chatBox.say("§a@useradd - добавить пользователя (пример: @useradd Ник)")
+            chatBox.say("§a@useradd - добавить пользователя (пример: @useradd Ник)") -- Сделай
             chatBox.say("§a@userdel - удалить пользователя (пример: @userdel Ник)")
             chatBox.say("§a@status - статус системы")
             chatBox.say("§a@setporog - установка порога жидкости (пример: @setporog 500)")
@@ -2023,7 +2708,7 @@ local function handleChatCommand(nick, msg, args)
             chatBox.say("§a@stop - остановка всех реакторов (или @stop 1 для остановки только 1-го)")
             chatBox.say("§a@exit - выход из программы")
             chatBox.say("§a@restart - перезагрузка компьютера")
-            chatBox.say("§a@changelog - показать изменения в обновлениях(пример: @changelog 1.1.1)")
+            chatBox.say("§a@changelog - показать изменения в обновлениях(пример: @changelog 1.1.1)") -- Скачивается массив из гитхаба в массиве ченджлог выглядит так {"1.0.0 - описание, переносы строк и тп, все учитывать и выводить в чат","1.0.1 - описание","1.1.0 - описание"}
         end
         
     elseif msg:match("^@status") then
@@ -2103,7 +2788,7 @@ local function handleChatCommand(nick, msg, args)
             end
         end
         
-    elseif msg:match("^@info") then
+    elseif msg == "@info" then
         if isChatBox then
             chatBox.say("§bReactor Control v" .. version .. " Build " .. build)
             chatBox.say("§aАвтор: §eP1KaChU337")
@@ -2112,7 +2797,7 @@ local function handleChatCommand(nick, msg, args)
             chatBox.say("§aИгроки с доступом: §5" .. table.concat(users, ", "))
             chatBox.say("§aСпасибо за использование программы!")
         end
-    elseif msg:match("^@exit") then
+    elseif msg == "@exit" then
         if isChatBox then
             chatBox.say("§cЗавершаю работу программы...")
             if work == true then
@@ -2138,6 +2823,7 @@ local function handleChatCommand(nick, msg, args)
     elseif msg:match("^@useradd") then
         local newUser = args:match("^(%S+)")
         if newUser then
+            -- Проверка, нет ли уже такого пользователя
             for _, u in ipairs(users) do
                 if u == newUser then
                     chatBox.say("§cПользователь §5" .. newUser .. " §cуже есть в списке!")
@@ -2201,7 +2887,7 @@ local function handleChatCommand(nick, msg, args)
             chatBox.say("§aИспользуйте: @changelog <версия>")
         end
 
-    elseif msg:match("^@restart") then
+    elseif msg == "@restart" then
         if isChatBox then
             chatBox.say("§cПерезагрузка системы...")
         end
@@ -2211,6 +2897,7 @@ end
 
 local function stripFormatting(s)
     if not s then return "" end
+    -- убираем Minecraft-подобные цветовые коды '§x'
     s = s:gsub("§.", "")
     return s
 end
@@ -2221,38 +2908,27 @@ end
 
 local function chatMessageHandler()
     while not exit do
-        local _, _, nick, msg = event.pull("chat_message")
+        local eventData = { event.pull(1, "chat_message") }
+        if eventData[1] == "chat_message" then
+            local _, _, nick, rawMsg = table.unpack(eventData)
 
-        if type(msg) == "string" then
-            local cmd, args = msg:match("^(%S+)%s*(.*)$")
-            if cmd then
-                cmd = cmd:lower() -- на всякий случай в нижний регистр
+            -- очистить сообщение, привести к нижнему регистру и обрезать пробелы
+            local clean = trim(stripFormatting(tostring(rawMsg)):lower())
 
-                if cmd:match("^@help") then
-                    handleChatCommand(nick, "@help", args)
-                elseif cmd:match("^@status") then
-                    handleChatCommand(nick, "@status", args)
-                elseif cmd:match("^@setporog") then
-                    handleChatCommand(nick, "@setporog", args)
-                elseif cmd:match("^@start") then
-                    handleChatCommand(nick, "@start", args)
-                elseif cmd:match("^@stop") then
-                    handleChatCommand(nick, "@stop", args)
-                elseif cmd:match("^@restart") then
-                    handleChatCommand(nick, "@restart", args)
-                elseif cmd:match("^@exit") then
-                    handleChatCommand(nick, "@exit", args)
-                elseif cmd:match("^@changelog") then
-                    handleChatCommand(nick, "@changelog", args)
-                elseif cmd:match("^@useradd") then
-                    handleChatCommand(nick, "@useradd", args)
-                elseif cmd:match("^@userdel") then
-                    handleChatCommand(nick, "@userdel", args)
-                elseif cmd:match("^@info") then
-                    handleChatCommand(nick, "@info", args)
-                end
+            -- вытащить первую "словную" часть (команду) и остаток (аргументы)
+            local command = clean:match("^(%S+)")
+            local args = ""
+            if command then
+                args = clean:match("^%S+%s*(.*)$") or ""
+            end
+
+            -- если команда есть в списке — передаём в обработчик
+            if command and chatCommands[command] then
+                -- изменил сигнатуру: передаю команду и аргументы отдельно
+                handleChatCommand(nick, command, args)
             end
         end
+        os.sleep(0)
     end
 end
 
@@ -2265,15 +2941,15 @@ local function handleTouch(x, y, uuid)
         y <= config.clickArea1.y2 and 
         x >= config.clickArea1.x1 and 
         x <= config.clickArea1.x2 then
-        buffer.drawRectangle(9, 44, 26, 3, colors.bg3, 0, " ")
-        animatedButton(1, 10, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfb3737)
-        animatedButton(2, 10, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfb3737)
+        buffer.drawRectangle(12, 44, 26, 3, colors.bg3, 0, " ")
+        animatedButton(1, 13, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfb3737)
+        animatedButton(2, 13, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfb3737)
         buffer.drawChanges()
         starting = false
         if reactors <= 0 then
             message("У вас не подключено ни одного реактора!", colors.msgwarn, 34)
             os.sleep(0.2)
-            animatedButton(1, 10, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
+            animatedButton(1, 13, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
             buffer.drawChanges()
             return
         end
@@ -2282,7 +2958,7 @@ local function handleTouch(x, y, uuid)
             if any_reactor_on == false then
                 message("Реакторы уже отключенны!", colors.msgwarn)
                 os.sleep(0.2)
-                animatedButton(1, 10, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
+                animatedButton(1, 13, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
                 buffer.drawChanges()
             else
                 stop()
@@ -2290,7 +2966,7 @@ local function handleTouch(x, y, uuid)
                 drawWidgets()
                 drawRFinfo()
                 os.sleep(0.2)
-                animatedButton(1, 10, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
+                animatedButton(1, 13, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
                 buffer.drawChanges()
             end
             return
@@ -2299,25 +2975,57 @@ local function handleTouch(x, y, uuid)
         stop()
         updateReactorData()
         os.sleep(0.2)
-        animatedButton(1, 10, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
+        animatedButton(1, 13, 44, "Отключить реакторы!", nil, nil, 24, nil, nil, 0xfd3232)
         buffer.drawChanges()
 
         os.sleep(0.3)
         drawDynamic()
     elseif 
+        y >= config.clickArea19.y1 and
+        y <= config.clickArea19.y2 and 
+        x >= config.clickArea19.x1 and 
+        x <= config.clickArea19.x2 then
+        buffer.drawRectangle(4, 44, 6, 3, colors.bg3, 0, " ")
+        animatedButton(1, 5, 44, "🔧", nil, nil, 4, nil, nil, 0x8100cc, 0xffffff)
+        animatedButton(2, 5, 44, "🔧", nil, nil, 4, nil, nil, 0x8100cc, 0xffffff)
+        buffer.drawChanges()
+        
+        os.sleep(0.2)
+        animatedButton(1, 5, 44, "🔧", nil, nil, 4, nil, nil, 0xa91df9, 0xffffff)
+        buffer.drawChanges()
+        
+        drawSettingsMenu()
+        drawDynamic()
+    elseif 
+        y >= config.clickArea20.y1 and
+        y <= config.clickArea20.y2 and 
+        x >= config.clickArea20.x1 and 
+        x <= config.clickArea20.x2 then
+        buffer.drawRectangle(4, 47, 6, 3, colors.bg3, 0, " ")
+        animatedButton(1, 5, 47, "ⓘ", nil, nil, 4, nil, nil, 0x8100cc, 0x05e2ff)
+        animatedButton(2, 5, 47, "ⓘ", nil, nil, 4, nil, nil, 0x8100cc, 0x05e2ff)
+        buffer.drawChanges()
+        
+        os.sleep(0.2)
+        animatedButton(1, 5, 47, "ⓘ", nil, nil, 4, nil, nil, 0xa91df9, 0x05e2ff)
+        buffer.drawChanges()
+        
+        testMenu()
+        drawDynamic()    
+    elseif 
         y >= config.clickArea4.y1 and
         y <= config.clickArea4.y2 and 
         x >= config.clickArea4.x1 and 
         x <= config.clickArea4.x2 then
-        buffer.drawRectangle(37, 44, 26, 3, colors.bg3, 0, " ")
-        animatedButton(1, 38, 44, "Запуск реакторов!", nil, nil, 24, nil, nil, 0x61ff52)
-        animatedButton(2, 38, 44, "Запуск реакторов!", nil, nil, 24, nil, nil, 0x61ff52)
+        buffer.drawRectangle(40, 44, 25, 3, colors.bg3, 0, " ")
+        animatedButton(1, 41, 44, "Запуск реакторов!", nil, nil, 23, nil, nil, 0x61ff52)
+        animatedButton(2, 41, 44, "Запуск реакторов!", nil, nil, 23, nil, nil, 0x61ff52)
         buffer.drawChanges()
         starting = true
         if reactors <= 0 then
             message("У вас не подключено ни одного реактора!", colors.msgwarn, 34)
             os.sleep(0.2)
-            animatedButton(1, 38, 44, "Запуск реакторов!", nil, nil, 24, nil, nil, 0x35e525)
+            animatedButton(1, 41, 44, "Запуск реакторов!", nil, nil, 23, nil, nil, 0x35e525)
             buffer.drawChanges()
             return
         end
@@ -2326,14 +3034,14 @@ local function handleTouch(x, y, uuid)
             if any_reactor_off == true then
                 start()
                 os.sleep(0.2)
-                animatedButton(1, 38, 44, "Запуск реакторов!", nil, nil, 24, nil, nil, 0x35e525)
+                animatedButton(1, 41, 44, "Запуск реакторов!", nil, nil, 23, nil, nil, 0x35e525)
                 buffer.drawChanges()
                 drawWidgets()
                 drawRFinfo()
             else
                 message("Реакторы уже запущены!", colors.msgwarn)
                 os.sleep(0.2)
-                animatedButton(1, 38, 44, "Запуск реакторов!", nil, nil, 24, nil, nil, 0x35e525)
+                animatedButton(1, 41, 44, "Запуск реакторов!", nil, nil, 23, nil, nil, 0x35e525)
                 buffer.drawChanges()
                 return
             end
@@ -2343,7 +3051,7 @@ local function handleTouch(x, y, uuid)
         start()
         updateReactorData()
         os.sleep(0.2)
-        animatedButton(1, 38, 44, "Запуск реакторов!", nil, nil, 24, nil, nil, 0x35e525)
+        animatedButton(1, 41, 44, "Запуск реакторов!", nil, nil, 23, nil, nil, 0x35e525)
         buffer.drawChanges()
         
         os.sleep(0.3)
@@ -2353,14 +3061,14 @@ local function handleTouch(x, y, uuid)
         y <= config.clickArea2.y2 and 
         x >= config.clickArea2.x1 and 
         x <= config.clickArea2.x2 then
-        buffer.drawRectangle(9, 47, 26, 3, colors.bg3, 0, " ")
-        animatedButton(1, 10, 47, "Рестарт программы.", nil, nil, 24, nil, nil, colors.whitebtn2)
-        animatedButton(2, 10, 47, "Рестарт программы.", nil, nil, 24, nil, nil, colors.whitebtn2)
+        buffer.drawRectangle(12, 47, 26, 3, colors.bg3, 0, " ")
+        animatedButton(1, 13, 47, "Рестарт программы.", nil, nil, 24, nil, nil, colors.whitebtn2)
+        animatedButton(2, 13, 47, "Рестарт программы.", nil, nil, 24, nil, nil, colors.whitebtn2)
         stop()
         message("Перезагружаюсь!")
         buffer.drawChanges()
         os.sleep(0.2)
-        animatedButton(1, 10, 47, "Рестарт программы.", nil, nil, 24, nil, nil, colors.whitebtn)
+        animatedButton(1, 13, 47, "Рестарт программы.", nil, nil, 24, nil, nil, colors.whitebtn)
         buffer.drawChanges()
         os.sleep(1)
         shell.execute("reboot")
@@ -2369,9 +3077,9 @@ local function handleTouch(x, y, uuid)
         y <= config.clickArea3.y2 and 
         x >= config.clickArea3.x1 and 
         x <= config.clickArea3.x2 then
-        buffer.drawRectangle(37, 47, 26, 3, colors.bg3, 0, " ")
-        animatedButton(1, 38, 47, "Выход из программы.", nil, nil, 24, nil, nil, colors.whitebtn2)
-        animatedButton(2, 38, 47, "Выход из программы.", nil, nil, 24, nil, nil, colors.whitebtn2)
+        buffer.drawRectangle(40, 47, 25, 3, colors.bg3, 0, " ")
+        animatedButton(1, 41, 47, "Выход из программы.", nil, nil, 23, nil, nil, colors.whitebtn2)
+        animatedButton(2, 41, 47, "Выход из программы.", nil, nil, 23, nil, nil, colors.whitebtn2)
         if work == true then
             work = false
             message("Отключаю реакторы!", colors.msginfo)
@@ -2383,7 +3091,7 @@ local function handleTouch(x, y, uuid)
         message("Завершаю работу программы...", colors.msgerror)
         buffer.drawChanges()
         os.sleep(0.2)
-        animatedButton(1, 38, 47, "Выход из программы.", nil, nil, 24, nil, nil, colors.whitebtn)
+        animatedButton(1, 41, 47, "Выход из программы.", nil, nil, 23, nil, nil, colors.whitebtn)
         buffer.drawChanges()
         os.sleep(0.5)
         buffer.clear(0x000000)
@@ -2397,35 +3105,22 @@ local function handleTouch(x, y, uuid)
         y <= config.clickArea5.y2 and 
         x >= config.clickArea5.x1 and 
         x <= config.clickArea5.x2 then
-        buffer.drawRectangle(65, 44, 20, 3, colors.bg3, 0, " ")
-        animatedButton(1, 66, 44, "Переключить тему", nil, nil, 18, nil, nil, 0x38afff)
-        animatedButton(2, 66, 44, "Переключить тему", nil, nil, 18, nil, nil, 0x38afff)
+        buffer.drawRectangle(67, 44, 20, 3, colors.bg3, 0, " ")
+        animatedButton(1, 68, 44, "Пр.Обновить МЭ", nil, nil, 18, nil, nil, 0x38afff)
+        animatedButton(2, 68, 44, "Пр.Обновить МЭ", nil, nil, 18, nil, nil, 0x38afff)
         buffer.drawChanges()
-        if theme == false then
-            theme = true
-            message("Тема изменена на: White Contrast!", nil, nil, true)
-            switchTheme(theme)
-        else
-            theme = false
-            message("Тема изменена на: Dark Modern!", nil, nil, true)
-            switchTheme(theme)
-        end
-        
+        checkFluid()
         os.sleep(0.2)
-        animatedButton(1, 66, 44, "Переключить тему", nil, nil, 18, nil, nil, nil)
+        animatedButton(1, 68, 44, "Пр.Обновить МЭ", nil, nil, 18, nil, nil, nil)
         buffer.drawChanges()
-        
-        os.sleep(0.3)
-        drawStatic()
-        drawDynamic()
     elseif
         y >= config.clickArea6.y1 and
         y <= config.clickArea6.y2 and 
         x >= config.clickArea6.x1 and 
         x <= config.clickArea6.x2 then
-        buffer.drawRectangle(65, 47, 20, 3, colors.bg3, 0, " ")
-        animatedButton(1, 66, 47, "Метрика: " .. status_metric, nil, nil, 18, nil, nil, colors.whitebtn2)
-        animatedButton(2, 66, 47, "Метрика: " .. status_metric, nil, nil, 18, nil, nil, colors.whitebtn2)
+        buffer.drawRectangle(67, 47, 20, 3, colors.bg3, 0, " ")
+        animatedButton(1, 68, 47, "Метрика: " .. status_metric, nil, nil, 18, nil, nil, colors.whitebtn2)
+        animatedButton(2, 68, 47, "Метрика: " .. status_metric, nil, nil, 18, nil, nil, colors.whitebtn2)
         metric = metric + 1
         if metric == 0 then
             status_metric = "Auto"
@@ -2457,7 +3152,7 @@ local function handleTouch(x, y, uuid)
             metric = 0
         end
         os.sleep(0.2)
-        animatedButton(1, 66, 47, "Метрика: " .. status_metric, nil, nil, 18, nil, nil, colors.whitebtn)
+        animatedButton(1, 68, 47, "Метрика: " .. status_metric, nil, nil, 18, nil, nil, colors.whitebtn)
         drawDynamic()
     elseif
     
@@ -2527,10 +3222,14 @@ end
 
 -- ----------------------------------------------------------------------------------------------------
 local function mainLoop()
+    -- Сбрасываем все динамические переменные, чтобы избежать конфликта данных.
+    -- Это обеспечивает "чистый" старт при каждом запуске.
     reactors = 0
     any_reactor_on = false
     any_reactor_off = false
 
+    -- Очищаем массивы вместо сброса каждого элемента.
+    -- Это более надежно, так как гарантирует, что в массивах не останется старых данных.
     reactor_work = {}
     temperature = {}
     reactor_type = {}
@@ -2558,6 +3257,7 @@ local function mainLoop()
     local addr = initMe()
     initFlux()
     initChatBox()
+    silentstop()
     
     for i = 1, (flux_network and 19 or 21) do
         consoleLines[i] = ""
@@ -2623,6 +3323,12 @@ local function mainLoop()
         drawWidgets()
     end
     checkVer()
+    if isFirstStart == true then
+        drawSettingsMenu()
+        message("Первый запуск программы завершен!", colors.msginfo)
+        isFirstStart = false
+        saveCfg()
+    end
     depletionTime = depletionTime or 0
     reactors = tonumber(reactors) or 0
     while true do
@@ -2664,6 +3370,9 @@ local function mainLoop()
         if now - lastTime >= 1 then
             lastTime = now
             second = second + 1
+            if me_network then
+                MeSecond = MeSecond + 1
+            end
             if work == true then
                 if second % 5 == 0 then
                     for i = 1, reactors do
@@ -2741,6 +3450,17 @@ local function mainLoop()
             end
             if second >= 60 then
                 minute = minute + 1
+                if minute % 10 == 0 then
+                    supportersText = loadSupportersFromURL("https://github.com/P1KaChU337/Reactor-Control-for-OpenComputers/raw/refs/heads/main/supporters.txt")
+                end
+                if minute >= 60 then
+                    checkVer()
+                    hour = hour + 1
+                    minute = 0
+                end
+                second = 0
+            end
+            if MeSecond >= 60 then
                 checkFluid()
                 if offFluid == true then
                     for i = 1, reactors do
@@ -2751,16 +3471,7 @@ local function mainLoop()
                         end
                     end
                 end
-                if minute % 10 == 0 then
-                    supportersText = loadSupportersFromURL("https://github.com/P1KaChU337/Reactor-Control-for-OpenComputers/raw/refs/heads/main/supporters.txt")
-                end
                 drawFluidinfo()
-                if minute >= 60 then
-                    checkVer()
-                    hour = hour + 1
-                    minute = 0
-                end
-                second = 0
             end
             drawTimeInfo()
             drawWidgets()
@@ -2783,23 +3494,25 @@ local lastCrashTime = 0
 while not exit do
     local ok, err = xpcall(mainLoop, debug.traceback)
     if not ok then
-        local now = os.time()
+        local now = computer.uptime() -- Заменил os.time() на computer.uptime()
 
         if tostring(err):lower():find("interrupted") or exit == true then
             return
         end
         
         if now - lastCrashTime < 5 then
+            logError("FAILSAFE: Rapid crashing detected.")
+            message("Rapid crashing detected.", 0xff0000, 34)
             os.sleep(5)
         end
         lastCrashTime = now
 
+        logError("Global Error:")
         logError(err)
-        if debugLog == true then
-            message("ГЛОБАЛЬНАЯ ОШИБКА!!!", 0xff0000, 34)
-            message("Code: " .. tostring(err), 0xff0000, 34)
-            message("Перезапуск через 5 секунд...", 0xffa500, 34)
-        end
+        message("Code: " .. tostring(err), 0xff0000, 34)
+        message("Global Error!", 0xff0000, 34)
+        message("Restarting in 3 seconds...", 0xffa500, 34)
+    
         os.sleep(3)
     end
 end
