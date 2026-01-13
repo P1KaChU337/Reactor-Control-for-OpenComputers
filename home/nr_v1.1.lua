@@ -51,9 +51,6 @@ if not fs.exists(configPath) then
         file:write("-- После внесение изменений сохраните данные (Ctrl+S) и выйдите из редактора (Ctrl+W)\n")
         file:write("-- Если в будущем захотите поменять данные то пропишите \"cd data\" затем \"edit config.lua\"\n")
         file:close()
-        shell.setWorkingDirectory("/home/data")
-        shell.execute("edit config.lua")
-        shell.setWorkingDirectory("/home")
     else
         io.stderr:write("Ошибка: не удалось создать файл " .. configPath .. "\n")
     end
