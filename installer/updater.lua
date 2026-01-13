@@ -7,7 +7,7 @@ local REPOSITORY  = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Contro
 local filesToDownload = {
   {url = REPOSITORY.."home/nr_v1.1.lua",                path="/home/main.lua"},
 }
-local newVer = "1.1.2"
+local newVer = "1.1.3"
 local oldVer = "1.0"
 local f = io.open("oldVersion.txt", "r")
 if f then
@@ -191,6 +191,7 @@ if not ok then
   term.clear()
   io.stderr:write("Installer crashed: "..tostring(err).."\n")
 end
+
 
 
 
