@@ -97,6 +97,7 @@ local reactor_rf         = {}
 local reactor_getcoolant = {}
 local reactor_maxcoolant = {}
 local reactor_depletionTime = {}
+local reactor_ConsumptionPerSecond = {}
 local last_me_address = nil
 local me_network = false
 local me_proxy = nil
@@ -106,6 +107,7 @@ local reason = nil
 local depletionTime = 0
 local consumeSecond = 0
 local supportersText = nil
+local changelog = nil
 local MeSecond = 0
 
 local isChatBox = component.isAvailable("chat_box") or false
@@ -790,11 +792,12 @@ local function drawWidgets()
             end
 
             buffer.drawText(x + 6,  y + 1,  colors.textclr, "Реактор #" .. i)
-            buffer.drawText(x + 4,  y + 3,  colors.textclr, "Нагрев: " .. (temperature[i] or "-") .. "°C")
-            buffer.drawText(x + 4,  y + 4,  colors.textclr, formatRFwidgets(reactor_rf[i]))
-            buffer.drawText(x + 4,  y + 5,  colors.textclr, "Тип: " .. (reactor_type[i] or "-"))
-            buffer.drawText(x + 4,  y + 6,  colors.textclr, "Запущен: " .. (reactor_work[i] and "Да" or "Нет"))
-            buffer.drawText(x + 4,  y + 7,  colors.textclr, "Распад: " .. secondsToHMS(reactor_depletionTime[i] or 0))
+            buffer.drawText(x + 4,  y + 2,  colors.textclr, "Нагрев: " .. (temperature[i] or "-") .. "°C")
+            buffer.drawText(x + 4,  y + 3,  colors.textclr, formatRFwidgets(reactor_rf[i]))
+            buffer.drawText(x + 4,  y + 4,  colors.textclr, "Тип: " .. (reactor_type[i] or "-"))
+            buffer.drawText(x + 4,  y + 5,  colors.textclr, "Запущен: " .. (reactor_work[i] and "Да" or "Нет"))
+            buffer.drawText(x + 4,  y + 6,  colors.textclr, "Распад: " .. secondsToHMS(reactor_depletionTime[i] or 0))
+            buffer.drawText(x + 4,  y + 7,  colors.textclr, "Потреб: " .. (reactor_type[i] == "Fluid" and reactor_ConsumptionPerSecond[i] or "0") .. " mB/s")
             animatedButton(1, x + 6, y + 8, (reactor_work[i] and "Отключить" or "Включить"), nil, nil, 10, nil, nil, (reactor_work[i] and 0xfd3232 or 0x2beb1a))
             if reactor_type[i] == "Fluid" then
                 drawVerticalProgressBar(x + 1, y + 1, 9, reactor_getcoolant[i], reactor_maxcoolant[i], 0x0044FF, 0x00C8FF, colors.bg2)
@@ -976,13 +979,28 @@ if not fs.exists("tmp") then
 end
 local function loadSupportersFromURL(url, tmpFile)
     tmpFile = tmpFile or "/tmp/supporters.txt"
-    os.execute("wget -fq " .. url .. " " .. tmpFile .. " > /dev/null 2>&1")
+    -- удаляем временный файл
+    os.execute("rm " .. tmpFile .. " > /dev/null 2>&1")
 
-    local f = io.open(tmpFile, "r")
-    local content = f:read("*l")
-    f:close()
-    os.execute("rm /tmp/supporters.txt > /dev/null 2>&1")
-    return content
+    -- обернем всё в pcall, чтобы ловить ошибки
+    local ok, content = pcall(function()
+        -- пробуем скачать файл
+        os.execute("wget -fq " .. url .. " " .. tmpFile .. " > /dev/null 2>&1")
+
+        -- пробуем открыть файл
+        local f = io.open(tmpFile, "r")
+        if not f then return nil end
+
+        local line = f:read("*l")
+        f:close()
+        return line
+    end)
+
+    if ok then
+        return content -- nil, если что-то не получилось
+    else
+        return nil -- ошибка wget или io.open
+    end
 end
 
 local function drawRightMenu()
@@ -1001,8 +1019,7 @@ local function drawRightMenu()
     end
 
     if supportersText then
-        buffer.drawText(124, 5, colors.textclr, "Спасибо за поддержку на Boosty:")
-        buffer.drawText(148, 5, 0xF15F2C, "Boosty")
+        buffer.drawText(124, 5, colors.textclr, "Спасибо за поддержку:")
         drawMarquee(124, 6, supportersText ..  "                            ", 0xF15F2C)
     end
     
@@ -1287,12 +1304,15 @@ end
 
 local function getTotalFluidConsumption()
     local total = 0
+    local consumeSecond = 0
     
     for i = 1, #reactors_proxy do
         local reactor = reactors_proxy[i]
         if reactor_type[i] == "Fluid" then
             if reactor_work[i] then
-                total = total + safeCall(reactor, "getFluidCoolantConsume", 0) or 0
+                consumeSecond = safeCall(reactor, "getFluidCoolantConsume", 0) or 0
+                reactor_ConsumptionPerSecond[i] = consumeSecond
+                total = total + consumeSecond
             end
         end
     end
@@ -1682,7 +1702,7 @@ local function stop(num)
     end
 end
 
-local function silentstop(num) -- Ещё один костыльчик
+local function silentstop(num)
     for i = num or 1, num or reactors do
         local proxy = reactors_proxy[i]
         local rType = reactor_type[i]
@@ -1709,6 +1729,8 @@ local function checkFluid()
     if not me_network then
         offFluid = true
         reason = "МЭ не найдена!"
+        fluidInMe = 0
+        drawFluidinfo()
         return
     end
 
@@ -1717,6 +1739,8 @@ local function checkFluid()
         if not me_proxy then
             offFluid = true
             reason = "Нет прокси МЭ!"
+            fluidInMe = 0
+            drawFluidinfo()
             return
         end
     end
@@ -1725,6 +1749,8 @@ local function checkFluid()
     if not ok or type(items) ~= "table" then
         offFluid = true
         reason = "Ошибка жидкости!"
+        fluidInMe = 0
+        drawFluidinfo()
         return
     end
 
@@ -1749,6 +1775,7 @@ local function checkFluid()
     end
 
     fluidInMe = count
+    drawFluidinfo()
 
     if fluidInMe <= porog then
         if ismechecked == false then
@@ -2124,6 +2151,7 @@ local function drawSettingsMenu()
         end
         return false
     end
+
     -- function msgModal(x, y, w, h, color, text, textclr)
     --     local winX, winY, winW, winH = x, y, w, h
     --     buffer.drawRectangle(winX, winY, winW, winH-2, color, 0x3a3a3a, brailleChar(button1[7]))
@@ -2145,7 +2173,7 @@ local function drawSettingsMenu()
 
     buffer.drawText(modalX + 1, modalY + modalH - 1, 0x999999, "P.S. Нажмите в любом месте вне окна, чтобы выйти без сохранения")
     animatedButton(1, modalX + 5, modalY + modalH - 4, "Сохранить и выйти", nil, nil, 18, nil, nil, 0x8100cc, 0xffffff)
-
+    -- buffer.drawText(modalX + 64, modalY, 0xff0000, "✕")
     drawNicknameWidget()
 
     local themetoggle = theme
@@ -2323,6 +2351,9 @@ local function drawSettingsMenu()
                 drawDynamic()
                 userUpdate()
                 message("Настройки сохранены!", nil, 34)
+                if isStart == true then
+                    start()
+                end
                 break
             end
 
@@ -2369,144 +2400,242 @@ local function drawSettingsMenu()
         end
     end
 end
-
--- -------------------------------{TEST MENU}--------------------------------------
-local function testMenu()
+-- -------------------------------{INFO MENU}--------------------------------------
+local function drawInfoMenu()
     local isStart = false
     if work == true and any_reactor_on == true then
         isStart = true
         stop()
     end
+
+    local modalX, modalY, modalW, modalH = 20, 5, 83, 36 -- Размеры модального окна, w - ширина, h - высота
     local old = buffer.copy(1, 1, 160, 50)
     buffer.drawRectangle(1, 1, 160, 50, 0x000000, 0, " ", 0.4)
-
-    buffer.drawRectangle(7, 4, 110, 37, 0xcccccc, 0, " ")
-    buffer.drawRectangle(6, 5, 112, 35, 0xcccccc, 0, " ")
+    buffer.drawRectangle(modalX, modalY, modalW, modalH, 0xcccccc, 0, " ")
+    buffer.drawRectangle(modalX-1, modalY+1, modalW+2, modalH-2, 0xcccccc, 0, " ")
     local cornerPos = {
-        {6, 4, 1}, {117, 4, 2},
-        {117, 40, 3}, {6, 40, 4}
+        {modalX-1, modalY, 1}, {modalX+modalW, modalY, 2},
+        {modalX+modalW, modalY+modalH-1, 3}, {modalX-1, modalY+modalH-1, 4}
     }
     for _, c in ipairs(cornerPos) do
         buffer.drawText(c[1], c[2], 0xcccccc, brailleChar(brail_status[c[3]]))
     end
-    buffer.drawText(51, 5, 0x000000, "Меню настроек приложения") -- ✕ ◖⨷◗
-    buffer.drawText(43, 6, 0x000000, "Нажмите \"ОК\" для продолжения.")
-    
-    removeAllFields()
-    createSearchField(20, 15, 32, "Введите никнейм(клик)")
-    createSearchField(20, 15+3, 32, "Введи текст чушпан...")
-    createSearchField(20, 15+6, 32, "Скрытый текст, епта", true)
 
-    animatedButton(1, 70, 25, "Сохранить", nil, nil, 11, nil, nil, 0x8100cc, 0xffffff)  
-    
-    -- Параметры нашего ползунка
-    local sw_x, sw_y, sw_w = 50, 25, 6
-    local sw_state = false -- текущее состояние
-    local sw_pipePos = (sw_state and (sw_w - 2) or 1)   -- позиция (1 - лево, sw_w-2 - право)
-    drawSwitch(sw_x, sw_y, sw_w, sw_pipePos, sw_state)
-    drawAllFields()
+    local infoScrollPos = 0
+    local changelogScrollPos = 0
+    local licenseScrollPos = 0
+    local section = 1 -- 1 - info, 2 - changelog, 3 - license
+    local scrollPos = 0
+    local maxScroll = 0
+    local function drawScrollText(x, y, w, h, text, pos)
+        local function wrapLine(line, maxWidth)
+            -- пустая строка = перенос
+            if line == "" then
+                return { "" }
+            end
 
+            local lines = {}
+            local current = ""
+
+            for word in line:gmatch("%S+") do
+                if unicode.len(current) == 0 then
+                    current = word
+                elseif unicode.len(current) + 1 + unicode.len(word) <= maxWidth then
+                    current = current .. " " .. word
+                else
+                    table.insert(lines, current)
+                    current = word
+                end
+            end
+
+            if unicode.len(current) > 0 then
+                table.insert(lines, current)
+            end
+
+            return lines
+        end
+
+        -- разворачиваем весь текст
+        local wrapped = {}
+        for _, line in ipairs(text) do
+            local lines = wrapLine(line, w)
+            for _, l in ipairs(lines) do
+                table.insert(wrapped, l)
+            end
+        end
+
+        -- считаем предел скролла ЗДЕСЬ
+        local totalLines = #wrapped
+        local maxScroll = math.max(0, totalLines - h)
+
+        -- защита от выхода за пределы
+        pos = math.max(0, math.min(pos, maxScroll))
+
+        -- отрисовка
+        for i = 1, h do
+            local idx = i + pos
+            if wrapped[idx] ~= nil then
+                buffer.drawText(x, y + i - 1, 0x000000, wrapped[idx])
+            end
+        end
+
+        return maxScroll
+    end
+
+    local infotext = {
+        "Автор программы: P1KaChU337",
+        "",
+        "Контакты: vk.com/p1kachu337, Discord: p1kachu337, Telegram: @sh1zurz",
+        "",
+        "GitHub проекта: github.com/P1KaChU337/Reactor-Control-for-OpenComputers",
+        "",
+        "Поддержать проект можно, предварительно связавшись со мной для согласования способа поддержки (на карту, boosty, или иной подарок).",
+        "",
+        "Лицензия: MIT License",
+        "",
+        "Описание программы:",
+        "Reactor Control — программа мониторинга, контроля и управления критически важными системами реакторного комплекса для игроков сервера McSkill HiTech 1.12.2, разработанная на базе мода OpenComputers. Программа предназначена для централизованного управления реакторами и связанными с ними инфраструктурными системами, а также для автоматического предотвращения аварийных ситуаций без необходимости постоянного ручного контроля.",
+        "",
+        "Программа поддерживает работу с жидкостными и воздушными HT-реакторами, интеграцию с Applied Energistics 2 для мониторинга и анализа жидкостей, а также интеграцию с Flux Networks для контроля энергетической сети. Подключение осуществляется через адаптеры OpenComputers к соответствующим контроллерам. Основной упор сделан на стабильность, безопасность и корректную работу реакторных комплексов любого масштаба.",
+        "",
+        "Реализована автоматическая система безопасности для жидкостных реакторов. При снижении уровня хладагента в МЭ-сети ниже заданного порога либо при полной недоступности МЭ-сети реакторы автоматически отключаются и переводятся в аварийный режим, в котором ручной запуск блокируется. После восстановления нормальных условий реакторы автоматически возвращаются в штатный режим и запускаются. Воздушные реакторы при проблемах с жидкостью не затрагиваются. Контроль состояния сетей и жидкостей выполняется на постоянной основе.",
+        "",
+        "Графический интерфейс программы отображает детальную информацию по каждому реактору, включая температуру, текущую генерацию энергии, тип реактора, статус включения, уровень хладагента в буфере, индивидуальный отсчёт времени до распада топливных стержней и данные о потреблении жидкости. В общем статусе комплекса выводится количество установленных реакторов и текущее состояние системы.",
+        "",
+        "Программа поддерживает управление и получение информации через игровой чат с использованием Chat Box. Это позволяет запускать и останавливать реакторы, получать статус комплекса, изменять параметры безопасности и управлять списком пользователей без прямого взаимодействия с интерфейсом компьютера. Реализована система пользователей и прав доступа, а также гибкая конфигурация с пользовательскими настройками.",
+        "",
+        "Особое внимание уделено надёжности и стабильности работы. Программа устойчиво обрабатывает ошибки, корректно работает при потере связи с МЭ- и Flux-сетями, использует безопасные вызовы компонентов и оптимизированную отрисовку интерфейса. Архитектура кода переработана с упором на предотвращение зависаний и циклических перезагрузок, что делает программу пригодной для длительной непрерывной работы.",
+        "",
+        "Программа не проверяет корректность сборки самих реакторов. В случае неверной схемы реактора вся ответственность за возможные последствия полностью лежит на пользователе.",
+        "",
+        "Программа распространяется бесплатно и предоставляется «как есть». Возможны ошибки и баги, но они оперативно исправляются, в случае если вы нашли баг настоятельная просьба сообщить об этом автору.", 
+        "Так-же автор не несёт ответственности за взрывы реакторов или иной ущерб, возникший в результате использования программы."
+    }
+
+    local changelogText = {}
+    if changelog then
+        for _, entry in ipairs(changelog) do
+            -- Заголовок версии
+            table.insert(changelogText, "Версия " .. entry.version .. ":")
+            -- Добавляем все изменения этой версии
+            for _, line in ipairs(entry.changes) do
+                table.insert(changelogText, "- " .. line)
+            end
+            -- Пустая строка между версиями для читаемости
+            table.insert(changelogText, "")
+        end
+    else
+        changelogText = { "Ошибка загрузки changelog.lua!" }
+    end
+
+    local licenseText = {
+        "MIT License", 
+        "",
+        "Copyright (c) 2025 P1KaChU337",
+        "",
+        "English Version",
+        "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.",
+        "",
+        "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+        "",
+        "Русская версия",
+        "Настоящим предоставляется разрешение любому лицу, получающему копию данного программного обеспечения и связанных с ним файлов документации («Программное обеспечение»), безвозмездно использовать Программное обеспечение без ограничений, включая, помимо прочего, права использовать, копировать, изменять, объединять, публиковать, распространять, сублицензировать и/или продавать копии Программного обеспечения, а также разрешать лицам, которым предоставляется Программное обеспечение, делать это при соблюдении следующих условий: Вышеуказанное уведомление об авторских правах и настоящее уведомление о разрешении должны быть включены во все копии или существенные части Программного обеспечения.",
+        "",
+        "ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ ПРЕДОСТАВЛЯЕТСЯ «КАК ЕСТЬ», БЕЗ КАКИХ-ЛИБО ГАРАНТИЙ, ЯВНЫХ ИЛИ ПОДРАЗУМЕВАЕМЫХ, ВКЛЮЧАЯ, НО НЕ ОГРАНИЧИВАЯСЬ, ГАРАНТИЯМИ ТОВАРНОЙ ПРИГОДНОСТИ,  ПРИГОДНОСТИ ДЛЯ КОНКРЕТНОЙ ЦЕЛИ И ОТСУТСТВИЯ НАРУШЕНИЯ ПРАВ. НИ ПРИ КАКИХ ОБСТОЯТЕЛЬСТВАХ  АВТОРЫ ИЛИ ПРАВООБЛАДАТЕЛИ НЕ НЕСУТ ОТВЕТСТВЕННОСТИ ЗА ЛЮБЫЕ ПРЕТЕНЗИИ, УБЫТКИ ИЛИ  ИНЫЕ ОБЯЗАТЕЛЬСТВА, БУДЬ ТО ПО ДОГОВОРНЫМ, ДЕЛИКТНЫМ ИЛИ ИНЫМ ПРИЧИНАМ,  ВОЗНИКАЮЩИЕ ИЗ ПРОГРАММНОГО ОБЕСПЕЧЕНИЯ ИЛИ В СВЯЗИ С НИМИ, НИ С ИСПОЛЬЗОВАНИЕМ  ПРОГРАММНОГО ОБЕСПЕЧЕНИЯ ИЛИ ИНЫМИ ОПЕРАЦИЯМИ С ПРОГРАММНЫМ ОБЕСПЕЧЕНИЕМ."
+    }
+
+    buffer.drawText(modalX + 19, modalY + 1, 0x000000, "Меню информации приложения ReactorControl v" .. version .. "." .. build)
+    buffer.drawText(modalX + 5, modalY + 3, 0x111111, "Общая информация")
+    buffer.drawRectangle(modalX + 4, modalY + 4, 18, 1, 0xcccccc, 0x8100cc, "⠉")
+    
+    buffer.drawText(modalX + 32, modalY + 3, 0x111111, "Изменения в версиях")
+    buffer.drawRectangle(modalX + 31, modalY + 4, 21, 1, 0xcccccc, 0x666666, "⠉")
+    
+    buffer.drawText(modalX + 65, modalY + 3, 0x111111, "MIT License")
+    buffer.drawRectangle(modalX + 64, modalY + 4, 13, 1, 0xcccccc, 0x666666, "⠉")
+
+    drawScrollText(modalX + 2, modalY + 5, modalW - 4, 29, infotext, 0)
+
+    buffer.drawText(modalX + 4, modalH+4, 0x999999, "P.S. Нажмите в любом месте вне окна, чтобы выйти из меню, текст скороллится")
     buffer.drawChanges()
+
     while true do
         local eventData = {event.pull(0.05)}
         local eventType = eventData[1]
 
-        for _, f in ipairs(searchFields) do
-            if f.active and computer.uptime() - f.lastBlink >= 0.5 then
-                f.cursorVisible = not f.cursorVisible
-                f.lastBlink = computer.uptime()
-                drawAllFields()
+        if eventType == "touch" then
+            local _, _, x, y, button, uuid = table.unpack(eventData)
+            
+            if x < modalX-1 or x > modalX + modalW or y < modalY or y > (modalY-1) + modalH then    
+                buffer.paste(1, 1, old)
+                buffer.drawChanges()
+                if isStart == true then
+                    start()
+                end
+                break
+            end
+            if x >= modalX + 5 and x <= modalX + 22 and y >= modalY + 3 and y <= modalY + 4 then
+                -- Общая информация
+                section = 1
+                scrollPos = 0
+                buffer.drawRectangle(modalX + 2, modalY + 5, modalW - 4, 29, 0xcccccc, 0, " ")
+                buffer.drawRectangle(modalX + 4, modalY + 4, 18, 1, 0xcccccc, 0x8100cc, "⠉")
+                buffer.drawRectangle(modalX + 31, modalY + 4, 21, 1, 0xcccccc, 0x666666, "⠉")
+                buffer.drawRectangle(modalX + 64, modalY + 4, 13, 1, 0xcccccc, 0x666666, "⠉")
+                drawScrollText(modalX + 2, modalY + 5, modalW - 4, 29, infotext, 0)
+                buffer.drawChanges()
+            elseif x >= modalX + 32 and x <= modalX + 52 and y >= modalY + 3 and y <= modalY + 4 then
+                -- Изменения в версиях
+                section = 2
+                scrollPos = 0
+                buffer.drawRectangle(modalX + 2, modalY + 5, modalW - 4, 29, 0xcccccc, 0, " ")
+                buffer.drawRectangle(modalX + 4, modalY + 4, 18, 1, 0xcccccc, 0x666666, "⠉")
+                buffer.drawRectangle(modalX + 31, modalY + 4, 21, 1, 0xcccccc, 0x8100cc, "⠉")
+                buffer.drawRectangle(modalX + 64, modalY + 4, 13, 1, 0xcccccc, 0x666666, "⠉")
+                drawScrollText(modalX + 2, modalY + 5, modalW - 4, 29, changelogText, 0)
+                buffer.drawChanges()
+            elseif x >= modalX + 65 and x <= modalX + 77 and y >= modalY + 3 and y <= modalY + 4 then
+                -- MIT License
+                section = 3
+                scrollPos = 0
+                buffer.drawRectangle(modalX + 2, modalY + 5, modalW - 4, 29, 0xcccccc, 0, " ")
+                buffer.drawRectangle(modalX + 4, modalY + 4, 18, 1, 0xcccccc, 0x666666, "⠉")
+                buffer.drawRectangle(modalX + 31, modalY + 4, 21, 1, 0xcccccc, 0x666666, "⠉")
+                buffer.drawRectangle(modalX + 64, modalY + 4, 13, 1, 0xcccccc, 0x8100cc, "⠉")
+                drawScrollText(modalX + 2, modalY + 5, modalW - 4, 29, licenseText, 0)
+                buffer.drawChanges()
             end
         end
 
-        if eventType == "touch" then
-            local _, _, x, y, button, uuid = table.unpack(eventData)
-
-            for i, f in ipairs(searchFields) do
-                if y == f.y and x >= f.x and x <= f.x + f.width - 1 then
-                    if i == 1 then
-                        searchFields[1].text = uuid or "" -- или nickname
-                        searchFields[1].active = false
-                        searchFields[1].cursorVisible = false
-                    else
-                        -- обычная активация остальных полей
-                        for _, f2 in ipairs(searchFields) do
-                            f2.active, f2.cursorVisible = false, false
-                        end
-                        f.active = true
-                        f.cursorVisible = true
-                        f.lastBlink = computer.uptime()
-                    end
-                else
-                    -- снимаем активность если клик не по полю
-                    if f.active then
-                        f.active = false
-                        f.cursorVisible = false
-                    end
+        if eventType == "scroll" then
+            local _, _, x, y, direction = table.unpack(eventData)
+            -- проверка что скролл внутри окна
+            if x >= modalX and x <= modalX + modalW - 1 and y >= modalY and y <= modalY + modalH - 1 then
+                if direction == -1 then
+                    scrollPos = math.min(maxScroll, scrollPos + 1)
+                elseif direction == 1 then
+                    scrollPos = math.max(0, scrollPos - 1)
                 end
-            end
-            drawAllFields()
 
-            if y >= 25 and y <= 27 and x >= 69 and x <= 76+5 then
-                buffer.drawRectangle(69, 25, 7, 3, 0xcccccc, 0, " ")
-                animatedButton(1, 70, 25, "Сохранить", nil, nil, 11, nil, nil, 0xa91df9, 0xffffff)
-                animatedButton(2, 70, 25, "Сохранить", nil, nil, 11, nil, nil, 0xa91df9, 0xffffff)
-                buffer.drawChanges()
-                os.sleep(0.2)
-                animatedButton(1, 70, 25, "Сохранить", nil, nil, 11, nil, nil, 0x8100cc, 0xffffff)
-                buffer.drawChanges()
-
-                buffer.paste(1, 1, old)
-                buffer.drawChanges()
-                message("Настройки сохранены!", nil, 34)
-                break
-            end
-            if x >= sw_x and x <= sw_x + sw_w - 1 and y == sw_y then
-                sw_state = not sw_state
-                
-                -- Анимация (простая)
-                local targetPos = sw_state and (sw_w - 2) or 1
-                local step = (targetPos > sw_pipePos) and 1 or -1
-                
-                repeat
-                    sw_pipePos = sw_pipePos + step
-                    drawSwitch(sw_x, sw_y, sw_w, sw_pipePos, sw_state)
-                    buffer.drawChanges()
-                    os.sleep(0.02)
-                until sw_pipePos == targetPos
-                
-                -- Тут можно добавить действие при переключении
-                -- example: reactor_auto_mode = sw_state
-            end
-
-        elseif eventType == "key_down" then
-            local _, _, char, code = table.unpack(eventData)
-            for _, f in ipairs(searchFields) do
-                if f.active then
-                    if code == 14 then -- Backspace
-                        if f.cursorPos > 1 then
-                            f.text = f.text:sub(1, f.cursorPos - 2) .. f.text:sub(f.cursorPos)
-                            f.cursorPos = f.cursorPos - 1
-                        end
-                    elseif code == 203 then -- стрелка влево
-                        if f.cursorPos > 1 then
-                            f.cursorPos = f.cursorPos - 1
-                        end
-                    elseif code == 205 then -- стрелка вправо
-                        if f.cursorPos <= #f.text then
-                            f.cursorPos = f.cursorPos + 1
-                        end
-                    elseif char >= 32 and char <= 126 then
-                        local c = string.char(char)
-                        f.text = f.text:sub(1, f.cursorPos - 1) .. c .. f.text:sub(f.cursorPos)
-                        f.cursorPos = f.cursorPos + 1
-                    elseif code == 28 then -- Enter
-                        f.active = false
-                        f.cursorVisible = false
-                    end
+                -- перерисовка
+                buffer.drawRectangle(
+                    modalX + 2,
+                    modalY + 5,
+                    modalW - 4,
+                    29,
+                    0xcccccc,
+                    0,
+                    " "
+                )
+                if section == 1 then
+                    maxScroll = drawScrollText(modalX + 2, modalY + 5, modalW - 4, 29, infotext, scrollPos)
+                elseif section == 2 then
+                    maxScroll = drawScrollText(modalX + 2, modalY + 5, modalW - 4, 29, changelogText, scrollPos)
+                elseif section == 3 then
+                    maxScroll = drawScrollText(modalX + 2, modalY + 5, modalW - 4, 29, licenseText, scrollPos)
                 end
+                buffer.drawChanges()
             end
-            drawAllFields()
         end
     end
 end
@@ -2674,6 +2803,7 @@ local function loadChangelog(url, tmpFile)
     return nil
 end
 
+
 local function handleChatCommand(nick, msg, args)
     -- Проверяем разрешения пользователя
     local hasPermission = false
@@ -2728,9 +2858,25 @@ local function handleChatCommand(nick, msg, args)
                 chatBox.say("§aЗапущены: " .. table.concat(running, ", "))
             end
 
-            chatBox.say("§aЖидкость в МЭ: " .. fluidInMe .. " Mb")
+            chatBox.say("§aЖидкости в МЭ: " .. fluidInMe .. " Mb")
             chatBox.say("§aПорог: " .. porog .. " Mb")
             chatBox.say("§aГенерация реакторов: " .. rf .. " RF/t")
+            chatBox.say("§aОбщее потребление жидкости реакторами: " .. consumeSecond .. " mB/s")
+            -- chatBox.say("§aСостояние реакторов:")
+            -- for i = 1, reactors do
+            --     if reactor_work[i] == true then
+            --         chatBox.say("§aРеактор " .. i .. ": §2Запущен")
+            --         chatBox.say("§aТемпература: §e" .. reactor_temp[i] .. " °C")
+            --         chatBox.say("§aВыработка: §e" .. reactor_rf[i] .. " RF/t")
+            --         chatBox.say("§aРаспад топлива через: §e" .. secondsToHMS(reactor_depletionTime[i] or 0))
+            --         chatBox.say("§aТип реактора: §e" .. reactor_type[i])
+            --         if reactor_type[i] == "Fluid" then
+            --             chatBox.say("§aПотребление жидкости: §e" .. reactor_consume[i] .. " mB/s")
+            --         end
+            --     else
+            --         chatBox.say("§aРеактор " .. i .. ": §cОстановлен")
+            --     end
+            -- end
         end
 
     elseif msg:match("^@start") then
@@ -2888,6 +3034,7 @@ local function handleChatCommand(nick, msg, args)
         if isChatBox then
             chatBox.say("§cПерезагрузка системы...")
         end
+        silentstop()
         computer.shutdown(true)
     end
 end
@@ -2992,7 +3139,6 @@ local function handleTouch(x, y, uuid)
         buffer.drawChanges()
         
         drawSettingsMenu()
-        drawDynamic()
     elseif 
         y >= config.clickArea20.y1 and
         y <= config.clickArea20.y2 and 
@@ -3007,8 +3153,7 @@ local function handleTouch(x, y, uuid)
         animatedButton(1, 5, 47, "ⓘ", nil, nil, 4, nil, nil, 0xa91df9, 0x05e2ff)
         buffer.drawChanges()
         
-        testMenu()
-        drawDynamic()    
+        drawInfoMenu()    
     elseif 
         y >= config.clickArea4.y1 and
         y <= config.clickArea4.y2 and 
@@ -3346,21 +3491,21 @@ local function mainLoop()
         if meChanged() then
             os.sleep(1)
             initMe()
+            checkFluid()
             message("МЭ система обновленна", colors.textclr)
-            if offFluid == true then
-                for i = 1, reactors do
-                    if reactor_type[i] == "Fluid" then
-                        drawStatus(i)
-                        if reactor_work[i] == true then
-                            stop(i)
-                        end
-                        ismechecked = false
-                        reactor_aborted[i] = true
+        end
+
+        if offFluid == true then
+            for i = 1, reactors do
+                if reactor_type[i] == "Fluid" then
+                    if reactor_work[i] == true then
+                        stop(i)
                         updateReactorData(i)
+                        reactor_aborted[i] = true
+                        drawFluidinfo()
+                        drawWidgets()
                     end
                 end
-                drawFluidinfo()
-                drawWidgets()
             end
         end
 
@@ -3376,8 +3521,10 @@ local function mainLoop()
                         local proxy = reactors_proxy[i]
                         if proxy and proxy.getTemperature then
                             reactor_rf[i] = safeCall(proxy, "getEnergyGeneration", 0)
+                            reactor_maxcoolant[i] = safeCall(proxy, "getMaxFluidCoolant", 0) or 1
                         else
                             reactor_rf[i] = 0
+                            reactor_maxcoolant[i] = 1
                         end
                         
                     end
@@ -3391,18 +3538,16 @@ local function mainLoop()
                             if proxy and proxy.getFluidCoolant then
                                 temperature[i]  = safeCall(proxy, "getTemperature", 0)
                                 reactor_getcoolant[i] = safeCall(proxy, "getFluidCoolant", 0) or 0
-                                reactor_maxcoolant[i] = safeCall(proxy, "getMaxFluidCoolant", 0) or 1
                             else
                                 reactor_getcoolant[i] = 0
-                                reactor_maxcoolant[i] = 1
                                 temperature[i] = 0
                             end
                         end
                         
                     end
                 end
-            else
-                if second % 20 == 0 then
+            -- else -- Убрал else возможно временно если будут баги
+                if second % 13 == 0 then
                     for i = 1, reactors do
                         local proxy = reactors_proxy[i]
                         if proxy and proxy.hasWork then
@@ -3412,6 +3557,32 @@ local function mainLoop()
                             reactor_work[i] = false
                         end
                         
+                    end
+                end
+            end
+            for i = 1, reactors do
+                if reactor_type[i] == "Fluid" then
+                    local current_coolant = reactor_getcoolant[i]
+                    local max_coolant = reactor_maxcoolant[i]
+                    
+                    -- 1. Проверка на аварийную остановку (ниже 60%)
+                    if current_coolant <= (max_coolant * 0.68) then
+                        if reactor_work[i] == true then
+                            silentstop(i)
+                            -- updateReactorData(i)
+                            reactor_aborted[i] = true
+                            reason = "Нет жидкости"
+                            message("Реактор " .. i .. " ОСТАНОВЛЕН! Уровень буфера критически низок", colors.msgwarn)
+                            message("Проверьте реакторную зону!", colors.msgwarn)
+                            -- message("Запуск реактора #" .. i .. " возможен только вручную.", colors.msgwarn)
+                        end
+                    end
+
+                    -- 2. Проверка на готовность к запуску (выше 80%)
+                    -- Это позволит убрать флаг ошибки, когда бак достаточно заполнится
+                    if reactor_aborted[i] and current_coolant >= (max_coolant * 0.8) and offFluid == false then
+                        reactor_aborted[i] = false
+                        message("Реактор " .. i .. " готов к работе (уровень восстановился).", colors.msginfo)
                     end
                 end
             end
@@ -3449,6 +3620,7 @@ local function mainLoop()
                 minute = minute + 1
                 if minute % 10 == 0 then
                     supportersText = loadSupportersFromURL("https://github.com/P1KaChU337/Reactor-Control-for-OpenComputers/raw/refs/heads/main/supporters.txt")
+                    changelog = loadChangelog("https://github.com/P1KaChU337/Reactor-Control-for-OpenComputers/raw/refs/heads/main/changelog.lua")
                 end
                 if minute >= 60 then
                     checkVer()
@@ -3468,7 +3640,6 @@ local function mainLoop()
                         end
                     end
                 end
-                drawFluidinfo()
             end
             drawTimeInfo()
             drawWidgets()
