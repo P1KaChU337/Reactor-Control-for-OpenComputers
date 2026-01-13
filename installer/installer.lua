@@ -1,6 +1,6 @@
 -- Reactor Control GUI Installer (std libs only)
 -- Author: P1KaChU337
-
+-- ProgV 1.1.3
 ------------------------------------ config ------------------------------------
 local REPOSITORY  = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/refs/heads/main/"
 
@@ -191,4 +191,5 @@ if not ok then
   term.clear()
   io.stderr:write("Installer crashed: "..tostring(err).."\n")
 end
+
 
