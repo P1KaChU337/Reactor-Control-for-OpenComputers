@@ -1,4 +1,4 @@
-changelog = {
+return {
   {
     version = "1.0",
     changes = {
