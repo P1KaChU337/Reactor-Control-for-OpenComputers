@@ -50,6 +50,12 @@ local function drawWidget(ui, slot, r)
         G.text(tx, y + 7, tc, "загрузку чанка.")
         G.text(tx, y + 9, tc, "Пока связи нет, реактор")
         G.text(tx, y + 10, tc, "программа не контролирует.")
+        local bw = 14
+        ui:button("forget" .. slot, x + math.floor((W - bw) / 2), y + H - 4, bw, "Забыть", 0x666666, 0xffffff, function()
+            local f = require("ui.screens.forget")
+            f.slot = slot
+            ui:openModal(f)
+        end)
         return
     end
 

@@ -26,6 +26,7 @@ local HELP = {
     "§a@setporog <mB> §7— порог хладагента в МЭ",
     "§a@useradd <ник> §7/ §a@userdel <ник> §7— белый список",
     "§a@changelog [версия] §7— изменения",
+    "§a@forget <n> [renum] §7— забыть пропавший реактор",
     "§a@info §7— о программе",
     "§a@restart §7— перезагрузить компьютер, §a@exit §7— выйти",
 }
@@ -149,6 +150,13 @@ commands["@changelog"] = function(app, args)
         say(app, "§eВерсии: §a" .. table.concat(v, ", "))
         say(app, "§aИспользуйте: @changelog <версия>")
     end
+end
+
+commands["@forget"] = function(app, args)
+    local n = tonumber(args:match("^(%d+)"))
+    if not n then say(app, "§aИспользование: @forget <номер> [renum] — забыть пропавший реактор") return end
+    local ok, err = app.actions:forget(n, args:find("renum", 1, true) ~= nil)
+    say(app, ok and ("§2Реактор #" .. n .. " забыт") or ("§c" .. tostring(err)))
 end
 
 commands["@exit"] = function(app) say(app, "§cЗавершаю работу программы...") app:requestExit() end

@@ -217,7 +217,9 @@ function App:init()
     log:setFileLevel(self.cfg.debugLog and "debug" or "info")
     self:scan()
     local st = self.state
-    log:title("Реакторов найдено: " .. st:count())
+    local offline = 0
+    for _, r in pairs(st.reactors) do if not r.online then offline = offline + 1 end end
+    log:title("Реакторов найдено: " .. st:count() .. (offline > 0 and (" (без связи: " .. offline .. ")") or ""))
     log:title("МЭ-сеть: " .. (st.me.present and "Подключена" or "Не подключена"))
     log:title("Flux-сеть: " .. (st.flux.present and "Подключена" or "Не подключена"))
     log:title("ChatBox: " .. (st.chat.present and "Подключен" or "Не подключен"))

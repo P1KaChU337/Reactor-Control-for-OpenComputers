@@ -217,3 +217,47 @@ T.test("защита: блокировку снимает запуск чере�
     app.actions:observeRunning(w.r(), true)
     T.no(w.r().faults.locked); T.eq(w.r().manualTries, 0); T.ok(w.r().startedAt)
 end)
+
+-- Забыть реактор / пропавший при запуске
+local discovery = require("hw.discovery")
+T.test("discovery: реактор из конфига, которого нет при запуске, показывается как 'нет связи'", function()
+    local c = T.clock(0)
+    local st = State.new(c.fn)
+    local cfg = config.defaults()
+    cfg.reactorSlots = {dead = 1, live = 2}
+    local comps = {live = "htc_reactors_nuclear_reactor"}
+    local component = {
+        list = function(t, exact)
+            local k
+            local res = {}
+            for a, ty in pairs(comps) do if not t or ty == t then res[a] = ty end end
+            return function() k = next(res, k) return k, k and res[k] end
+        end,
+        proxy = function(a) return {address = a} end,
+    }
+    discovery.scan(component, st, cfg, Log.new({clock = c.fn}), nil)
+    T.ok(st.reactors[1] and not st.reactors[1].online, "#1 есть и без связи")
+    T.ok(st.reactors[1].faults.offline); T.ok(st.reactors[2].online)
+end)
+
+T.test("actions: забыть и перенумеровать", function()
+    local w = world({n = 3})
+    local app = appFor(w)
+    for i = 1, 3 do w.cfg.reactorSlots[w.r(i).address] = i end
+    local ok, err = app.actions:forget(2)
+    T.no(ok, "на связи — нельзя"); T.ok(err:find("на связи"))
+    w.r(1).online = false
+    T.ok(app.actions:forget(1, true))
+    T.eq(w.st:count(), 2); T.eq(w.r(1).address, "addr2"); T.eq(w.r(2).address, "addr3")
+    T.eq(w.cfg.reactorSlots.addr2, 1); T.eq(w.cfg.reactorSlots.addr3, 2); T.no(w.cfg.reactorSlots.addr1)
+    T.ok(app.proxies.reactors[1] and app.proxies.reactors[2]); T.no(app.proxies.reactors[3])
+end)
+
+T.test("actions: забыть без перенумерации оставляет номера", function()
+    local w = world({n = 3})
+    local app = appFor(w)
+    for i = 1, 3 do w.cfg.reactorSlots[w.r(i).address] = i end
+    w.r(2).online = false
+    T.ok(app.actions:forget(2, false))
+    T.no(w.st.reactors[2]); T.eq(w.r(3).address, "addr3"); T.eq(w.cfg.reactorSlots.addr3, 3)
+end)

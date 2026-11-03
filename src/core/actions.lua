@@ -196,6 +196,38 @@ function Actions:observeRunning(r, observed)
     self.app.state:touch()
 end
 
+-- Забыть реактор, которого больше нет (только без связи). renumber: сдвинуть остальные номера по порядку.
+function Actions:forget(slot, renumber)
+    local app = self.app
+    local state, cfg, log = app.state, app.cfg, app.log
+    local r = state.reactors[slot]
+    if not r then return false, "Реактора #" .. tostring(slot) .. " нет" end
+    if r.online then return false, "Реактор #" .. slot .. " на связи — забыть можно только пропавший реактор" end
+    cfg.reactorSlots[r.address] = nil
+    state:removeReactor(slot)
+    app.proxies.reactors[slot] = nil
+    log:ok("Реактор #" .. slot .. " забыт")
+    if renumber then
+        local list = state:list()
+        local newReactors, newProxies = {}, {}
+        local moved = {}
+        for i, rr in ipairs(list) do
+            local old = rr.slot
+            if old ~= i then moved[#moved + 1] = "#" .. old .. " -> #" .. i end
+            newProxies[i] = app.proxies.reactors[old]
+            rr.slot = i
+            newReactors[i] = rr
+            cfg.reactorSlots[rr.address] = i
+        end
+        state.reactors = newReactors
+        app.proxies.reactors = newProxies
+        if #moved > 0 then log:info("Номера реакторов: " .. table.concat(moved, ", ")) end
+    end
+    app.saveConfig()
+    state:touch()
+    return true
+end
+
 function Actions:refreshMe()
     local me, sched = self.app.state.me, self.app.scheduler
     local wait = math.max(0, (me.cooldownUntil or 0) - self.app.clock())

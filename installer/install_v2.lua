@@ -51,6 +51,7 @@ local FILES = {
     "ui/braille.lua",
     "ui/format.lua",
     "ui/gfx.lua",
+    "ui/screens/forget.lua",
     "ui/screens/info.lua",
     "ui/screens/main.lua",
     "ui/screens/settings.lua",

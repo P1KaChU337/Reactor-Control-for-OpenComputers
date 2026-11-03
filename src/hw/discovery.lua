@@ -69,6 +69,14 @@ function M.scan(component, state, cfg, log, proxies)
                 proxies.reactors[s] = component.proxy(addr)
                 r.needStatic = true
             end
+        elseif addr and not r then
+            -- номер закреплён в конфиге, но реактора нет уже при запуске (взорвался, сломан адаптер,
+            -- не прогружен чанк): показываем как "нет связи", чтобы его можно было забыть
+            r = state:newReactor(s, addr)
+            r.online = false
+            r.faults.offline = {since = state.clock(), text = "Нет связи"}
+            log:warn("Реактор #" .. s .. " не найден. Если его больше нет — нажмите «Забыть» на виджете")
+            changed = true
         elseif addr and r and r.online then
             -- был, но пропал: держим номер, ставим аварию
             r.online = false
