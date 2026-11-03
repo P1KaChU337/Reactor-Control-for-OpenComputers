@@ -296,6 +296,8 @@ local function popEvent(filter)
     end
 end
 local function pullWith(timeout, filter)
+    -- как в OC: даже pull(0) отдаёт управление до следующего тика
+    if timeout and timeout < 0.05 then timeout = 0.05 end
     local deadline = emu.time + (timeout or math.huge)
     while true do
         local ev = popEvent(filter)

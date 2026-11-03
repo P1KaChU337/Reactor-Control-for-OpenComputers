@@ -79,23 +79,30 @@ T.test("защита: долгий перебой -> стоп, буфер не �
     T.ok(minSecs >= 2, "минимум буфера при работе: " .. minSecs .. " с")
 end)
 
-T.test("защита: после перебоя автозапуск, если буфера хватает", function()
+T.test("защита: после аварии буфера — только ручной запуск и подсказка", function()
     local w = world()
     w.run(21)
     w.supply[1] = false
     w.run(10)
     T.no(w.r().running)
-    local left = w.r().coolant / D
+    w.supply[1] = true
+    w.run(60)
+    T.no(w.r().running, "сам не запускается")
+    T.ok(w.r().faults.buffer_low)
+    local hint = false
+    for _, l in ipairs(w.log) do if l:find("Проверьте подключение") then hint = true end end
+    T.ok(hint, "подсказка про подключение")
+end)
+
+T.test("защита: bufferAutoRestart включён — автозапуск, если буфера хватает", function()
+    local w = world({cfg = {bufferAutoRestart = true, bufferRestartSec = 1}})
+    w.run(21)
+    w.supply[1] = false
+    w.run(10)
+    T.no(w.r().running)
     w.supply[1] = true
     w.run(40)
-    if left >= w.cfg.bufferRestartSec then
-        T.ok(w.r().running, "запустился сам")
-    else
-        T.no(w.r().running, "буфера мало — ждёт ручного запуска")
-        local hint = false
-        for _, l in ipairs(w.log) do if l:find("Нужен ручной запуск") then hint = true end end
-        T.ok(hint, "подсказка про ручной запуск")
-    end
+    T.ok(w.r().running, "запустился сам")
 end)
 
 T.test("защита: нехватка в ME останавливает только жидкостные, потом автозапуск", function()

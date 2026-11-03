@@ -23,7 +23,28 @@ hw/
   discovery.lua     поиск компонентов, постоянные номера реакторов (адрес -> номер в конфиге)
 ```
 
-Интерфейса пока нет: журнал выводится в терминал.
+ui/
+  ui.lua            кадры, зоны нажатий, анимация без sleep, модальные окна как слой поверх экрана
+  gfx.lua           примитивы v1.1.3: текст (с широкими символами), кнопка, рамка, брайль-цифры, полоса, переключатель, поле
+  braille.lua       брайль: кэш 256 символов, картинки из ASCII-арта
+  sprites.lua       все брайль-спрайты в виде ASCII-арта ('#' — точка)
+  theme.lua         тёмная и светлая темы
+  format.lua        числа и время
+  screens/main.lua      главный экран
+  screens/settings.lua  окно настроек
+  screens/info.lua      окно информации
+images/             фоны .pic для тем
+
+Запуск без интерфейса (журнал в терминал): `main.lua --nogui`.
+
+## Установка в игре (тест)
+
+```
+wget -f https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/claude/keen-volta-rnypyl/installer/install_v2.lua /home/install_v2.lua
+install_v2
+/home/reactorcontrol/main.lua
+```
+Старая версия и её настройки не трогаются, v2 переносит настройки сама.
 
 ## Проверка без игры
 

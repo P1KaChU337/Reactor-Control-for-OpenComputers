@@ -74,9 +74,9 @@ M.SCHEMA = {
     bufferStopSec    = {default = 5, check = numRange(2, 60)},  -- мягкий порог: стоп
     bufferHardStopSec = {default = 2, check = numRange(1, 30)}, -- жёсткий порог: стоп всегда, даже сразу после запуска
     startGraceSec    = {default = 4, check = numRange(0, 60)},  -- после запуска до первого долива: только жёсткий порог
-    bufferRestartSec = {default = 4, check = numRange(1, 60)},  -- автозапуск, только если буфера хватит хотя бы на N с
-    bufferResumePct  = {default = 0.8, check = numRange(0.1, 1)},  -- или если буфер заполнен хотя бы на N
-    bufferRetrySec   = {default = 30, check = numRange(5, 3600)}, -- автозапуск после аварии буфера не раньше, чем через N с
+    bufferAutoRestart = {default = false, check = bool},          -- после аварии буфера запускать самому (по умолчанию нет: надо чинить подачу)
+    bufferRestartSec = {default = 4, check = numRange(1, 60)},     -- ...только если буфера хватит хотя бы на N с
+    bufferRetrySec   = {default = 30, check = numRange(5, 3600)},  -- ...и не раньше, чем через N с
     bufferStopPct    = {default = 0.5, check = numRange(0.05, 0.95)}, -- запасной порог, если расход неизвестен совсем
     drainFactor      = {default = 100, check = numRange(1, 10000)}, -- пока расход не замерен: номинал x N (замер с сервера)
     coolantName      = {default = "low_temperature_refrigerant", check = function(v) if type(v) == "string" and #v > 0 then return v end end},

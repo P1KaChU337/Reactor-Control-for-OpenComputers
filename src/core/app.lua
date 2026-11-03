@@ -15,6 +15,7 @@ local App = {}
 App.__index = App
 
 App.VERSION = "2.0.0-dev"
+App.VERSION_SHORT = "2.0-dev"
 
 -- Интервалы опроса (секунды) и сдвиги, чтобы группы не попадали в один тик
 App.POLL = {
@@ -173,6 +174,7 @@ end
 -- Один проход цикла: ждать событие не дольше, чем до ближайшей задачи
 function App:step(maxWait)
     local wait = self.scheduler:timeUntilNext()
+    if self.waitHint then wait = math.min(wait, self.waitHint()) end
     if maxWait and wait > maxWait then wait = maxWait end
     local ev = table.pack(self.event.pull(wait))
     local name = ev[1]
@@ -194,6 +196,9 @@ function App:step(maxWait)
         if not ok then self.log:error("Отрисовка: " .. tostring(err)) end
     end
 end
+
+function App:requestExit() self.exitReason = "exit" self.running = false end
+function App:requestRestart() self.exitReason = "restart" self.running = false end
 
 function App:shutdown()
     self.log:info("Завершение работы, реакторы останавливаются")

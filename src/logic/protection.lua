@@ -4,7 +4,7 @@
 -- Аварии:
 --   me_low     хладагента в ME не больше порога                       (жидкостные)
 --   me_lost    нет данных из ME дольше meLostSec (или ME не подключена)  (жидкостные)
---   buffer_low буфер реактора кончится быстрее, чем через bufferStopSec  (жидкостные, работающие)
+--   buffer_low буфер реактора кончится быстрее, чем через bufferStopSec  (жидкостные, работающие); снимается вручную
 --   unstable   слишком много автозапусков подряд, нужен ручной запуск
 --   offline    компонент реактора пропал (ставит discovery)
 --
@@ -88,20 +88,20 @@ function M.evaluate(state, cfg, now)
                     elseif r.coolantMax and r.coolantMax > 0 then low = r.coolant / r.coolantMax < cfg.bufferStopPct end
                     if low then setFault(r, "buffer_low", now, events) end
                 end
+                -- Авария буфера снимается только ручным запуском (core.actions:start), если не включён
+                -- bufferAutoRestart: раз буфер опустел, хладагент не доходит из ME до реактора — это надо
+                -- идти чинить руками. В простое буфер не доливается, так что ждать его заполнения бессмысленно.
                 local bf = r.faults.buffer_low
                 if bf and not r.running then
-                    -- Остановленный реактор буфер не доливает. Снимаем аварию, если ME в порядке, прошло
-                    -- bufferRetrySec и буфера хватит дождаться первого долива. Иначе — только ручной запуск.
-                    local enough = secs and secs >= cfg.bufferRestartSec
-                    local full = r.coolant and r.coolantMax and r.coolantMax > 0 and r.coolant / r.coolantMax >= cfg.bufferResumePct
-                    local waited = now - bf.since >= cfg.bufferRetrySec and not meLost and not meLow
-                    if full or (waited and enough) then
-                        clearFault(r, "buffer_low", events)
-                    elseif waited and not bf.manualHint then
-                        bf.manualHint = true
-                        events[#events + 1] = {level = "warn", slot = r.slot, text = string.format(
-                            "Реактор #%d: буфера мало (%s), в простое он не доливается. Нужен ручной запуск",
-                            r.slot, secs and string.format("%.1f с", secs) or "?")}
+                    if not bf.hinted then
+                        bf.hinted = true
+                        events[#events + 1] = {level = "warn", slot = r.slot, text = "Реактор #" .. r.slot
+                            .. ": хладагент не доходит из МЭ до реактора. Проверьте подключение и запустите вручную"}
+                    end
+                    if cfg.bufferAutoRestart then
+                        local enough = secs and secs >= cfg.bufferRestartSec
+                        local waited = now - bf.since >= cfg.bufferRetrySec and not meLost and not meLow
+                        if waited and enough then clearFault(r, "buffer_low", events) end
                     end
                 end
             else
