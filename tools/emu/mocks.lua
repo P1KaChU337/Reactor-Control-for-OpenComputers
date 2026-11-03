@@ -36,9 +36,9 @@ function M.reactor(opts)
     local s = {
         active = opts.active or false,
         fluid = opts.fluid ~= false,
-        temp = opts.temp or 0,
+        temp = opts.temp or 9998,          -- на сервере 9998 и у работающих, и у остановленных (у одного реактора 0)
         maxTemp = opts.maxTemp or 9999,
-        gen = opts.gen or 250000,
+        gen = opts.gen or 7793856,
         coolant = opts.coolant or 983200,
         maxCoolant = opts.maxCoolant or 1080000,
         consume = opts.consume or 967,      -- номинальный расход, отдаётся и когда реактор стоит
@@ -71,7 +71,7 @@ function M.reactor(opts)
     function p.setActiveCooling(v) s.fluid = v and true or false return true end
     function p.isFuelFilterActive() return true end
     function p.getReactorLevel() return s.level end
-    function p.getTemperature() tick() return s.active and (s.temp > 0 and s.temp or 350) or s.temp end
+    function p.getTemperature() tick() return s.temp end
     function p.getMaxTemperature() return s.maxTemp end
     function p.getEnergyGeneration() tick() return s.active and s.gen or 0 end
     function p.getFluidCoolant() tick() return math.floor(s.coolant) end
@@ -106,27 +106,37 @@ function M.reactor(opts)
     return p
 end
 
--- ME-контроллер. getItemsInNetwork на сервере ограничен по частоте:
--- во время кулдауна возвращает false, "cooldown", "14s"
+-- ME-контроллер. На сервере getItemsInNetwork и getFluidsInNetwork делят ОДИН кулдаун ~15 с:
+-- во время него возвращают false, "cooldown", "14s"
 function M.me(opts)
     opts = opts or {}
-    local s = {fluid = opts.fluid or 1000000, cooldown = opts.cooldown or 15, lastItems = -math.huge}
+    local s = {fluid = opts.fluid or 10018613, cooldown = opts.cooldown or 15, last = -math.huge}
     local p = {type = opts.type or "me_controller", address = addr("me"), state = s, __doc = {
         getItemsInNetwork = "function([filter:table]):table -- Get a list of the stored items in the network.",
         getFluidsInNetwork = "function():table -- Get a list of the stored fluids in the network.",
     }}
-    function p.getItemsInNetwork(filter)
+    local function cooldown()
         local t = now()
-        if t - s.lastItems < s.cooldown then
-            return false, "cooldown", string.format("%ds", math.ceil(s.cooldown - (t - s.lastItems)))
+        if t - s.last < s.cooldown then
+            return string.format("%ds", math.ceil(s.cooldown - (t - s.last)))
         end
-        s.lastItems = t
-        return {{name = "ae2fc:fluid_drop", label = "drop of low_temperature_refrigerant", size = s.fluid}}
+        s.last = t
+    end
+    function p.getItemsInNetwork(filter)
+        local left = cooldown()
+        if left then return false, "cooldown", left end
+        return {
+            {damage = 0, hasTag = true, isCraftable = true, label = "IC2 Coolant", maxDamage = 0, maxSize = 64, name = "ae2fc:fluid_drop", size = 133000},
+            {damage = 0, hasTag = true, isCraftable = false, label = "fluid.low_temperature_refrigerant", maxDamage = 0, maxSize = 64, name = "ae2fc:fluid_drop", size = s.fluid},
+        }
     end
     function p.getFluidsInNetwork()
+        local left = cooldown()
+        if left then return false, "cooldown", left end
         return {
             {amount = 87100800, hasTag = false, label = "Tritium", name = "tritium"},
-            {amount = s.fluid, hasTag = false, label = "Low Temperature Refrigerant", name = "low_temperature_refrigerant"},
+            {amount = 133000, hasTag = false, label = "IC2 Coolant", name = "ic2coolant"},
+            {amount = s.fluid, hasTag = false, label = "fluid.low_temperature_refrigerant", name = "low_temperature_refrigerant"},
         }
     end
     function p.isNetworkPowered() return true end

@@ -6,10 +6,10 @@
 --
 -- Использование:
 --   probe                  отчёт -> /home/probe_report.txt
---   probe --watch 120      плюс 120 секунд наблюдения за реактором #1 (лучше на РАБОТАЮЩЕМ реакторе)
---   probe --watch 120 -r 2 то же для реактора #2
+--   probe --watch=120                 плюс 120 с наблюдения за первым РАБОТАЮЩИМ реактором
+--   probe --watch=120 --reactor=2     то же для реактора #2
 --   probe --cooldown       замерить кулдаун ME getItemsInNetwork (ждёт до ~2 минут)
---   probe --toggle 1       ВКЛЮЧАЕТ/ВЫКЛЮЧАЕТ реактор #1, чтобы замерить реакцию (спросит подтверждение)
+--   probe --toggle=1       ВКЛЮЧАЕТ/ВЫКЛЮЧАЕТ реактор #1, чтобы замерить реакцию (спросит подтверждение)
 --   probe --all            опросить вообще все компоненты, а не только известные типы
 --
 -- Выгрузить отчёт:  pastebin put /home/probe_report.txt
@@ -20,9 +20,21 @@ local shell = require("shell")
 
 local args, opts = shell.parse(...)
 local OUT = "/home/probe_report.txt"
-local WATCH = tonumber(opts.watch) or 0
-local REACTOR_N = tonumber(opts.r) or 1
-local TOGGLE = tonumber(opts.toggle)
+-- OpenOS понимает только "--watch=120"; "--watch 120" даёт opts.watch=true и args={"120"}. Принимаем оба варианта
+local function optNum(name, default)
+    local v = opts[name]
+    if v == nil then return nil end
+    if v == true then
+        for i, a in ipairs(args) do
+            if tonumber(a) then table.remove(args, i) return tonumber(a) end
+        end
+        return default
+    end
+    return tonumber(v) or default
+end
+local WATCH = optNum("watch", 120) or 0
+local REACTOR_N = optNum("reactor") -- если не указан, берём первый работающий
+local TOGGLE = optNum("toggle")
 
 local function isKnownType(t)
     return t:match("^htc_reactors") or t:match("^me_") or t == "flux_controller" or t == "chat_box"
@@ -306,6 +318,16 @@ local function rodsStats(rods)
     return n, sum, mn, mx
 end
 
+if WATCH > 0 and not REACTOR_N then
+    for i, a in ipairs(reactors) do
+        local ok, work = pcall(component.proxy(a).hasWork)
+        if ok and work == true then REACTOR_N = i break end
+    end
+    if not REACTOR_N then
+        REACTOR_N = 1
+        w("!!! Ни один реактор не работает, наблюдаю за #1 (данные о расходе топлива будут пустыми)")
+    end
+end
 if WATCH > 0 and reactors[REACTOR_N] then
     local p = component.proxy(reactors[REACTOR_N])
     say("Наблюдение за реактором #", REACTOR_N, " ", WATCH, " с...")

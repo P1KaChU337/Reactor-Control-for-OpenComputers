@@ -36,7 +36,7 @@
 | `hasWork()` | boolean | работает ли |
 | `activate()` / `deactivate()` | boolean | |
 | `isActiveCooling()` / `setActiveCooling(bool)` | boolean | жидкостное охлаждение; это и есть «тип» Fluid/Air |
-| `getTemperature()` / `getMaxTemperature()` | int | у остановленных реакторов было 9998/9999, у одного 0/0 — **непонятно, нужен `--watch`** |
+| `getTemperature()` / `getMaxTemperature()` | int | 9998 из 9999 и у работающих, и у остановленных; у реактора на калифорнии 0 из 0. **Похоже, температура в моде не меняется**, проверяется `--watch` |
 | `getEnergyGeneration()` | long | |
 | `getFluidCoolant()` / `getMaxFluidCoolant()` | int | буфер, на сервере 1 080 000 и 1 296 000 |
 | `getFluidCoolantConsume()` | int | **номинальный** расход в секунду, отдаётся и у остановленного реактора (967, 1109) |
@@ -47,12 +47,19 @@
 | `getReactorLevel()` | int | 6 |
 | `isFuelFilterActive()` | boolean | |
 
-Ещё не известно (нужен `probe --watch` на работающем реакторе): в каких единицах `fuel`
+Работающий реактор (6 уровень, 20 MOX-стержней) выдаёт ~7,8 млн RF/t.
+
+Ещё не известно (нужен `probe --watch=120` на работающем реакторе): в каких единицах `fuel`
 и с какой скоростью он убывает, как ведёт себя температура, совпадает ли убыль буфера с `getFluidCoolantConsume`.
 
 **ME-контроллер.** Все методы не direct.
-- `getItemsInNetwork(filter)` **ограничен по частоте**: во время паузы возвращает `false, "cooldown", "14s"`. Длительность паузы меряет `probe --cooldown`.
-- `getFluidsInNetwork()` вернул список из 46 жидкостей, паузы не было замечено. Возможно, хладагент удобнее брать отсюда, это проверяет `probe` v2.
+- `getItemsInNetwork(filter)` и `getFluidsInNetwork()` **делят одну паузу ~15 с**: после успешного вызова любого из них
+  оба возвращают `false, "cooldown", "14s"`, пока пауза не кончится (замер: снова доступен через 16 с).
+  Значит, ME можно читать не чаще раза в 15–16 с на весь компьютер, и ручное обновление тоже должно это уважать.
+- Хладагент: в `getFluidsInNetwork` это `name = "low_temperature_refrigerant"`, `label = "fluid.low_temperature_refrigerant"`,
+  `amount` в mB. В `getItemsInNetwork{name="ae2fc:fluid_drop"}` тот же хладагент виден как дроп с тем же `label`.
+  Берём `getFluidsInNetwork` и ищем **точное** `name`: без фильтра по подстроке, а `IC2 Coolant` не путается.
+- Схема реакторов на сервере разная: у одного 24 калифорниевых стержня (`maxFuel` 8000), буфер 1 296 000 и расход 1109.
 
 **Flux** (`getEnergyInfo`, `getCountInfo`, `getFluxInfo`, `getNetworkInfo`) — direct.
 `energyInput/Output` бывают ~2.6·10¹¹, `totalBuffer` ~10¹³, так что числа нужно форматировать до `T` и `P`.
@@ -226,7 +233,7 @@
 | `getEnergyGeneration`, `getFluidCoolantConsume` | 5 с | 2·N |
 | `getMaxFluidCoolant`, `isActiveCooling` | при подключении и раз в 60 с | 2·N |
 | `getAllFuelRodsStatus` | 30–60 с, таймер между опросами считается локально | N |
-| ME (`getFluidsInNetwork` или `getItemsInNetwork`) | 60 с и по кнопке. Пауза ME — это не авария: оставляем последнее значение и повторяем после паузы. Аварией считается только отсутствие данных дольше N минут | 1 |
+| ME `getFluidsInNetwork` | 60 с и по кнопке, но не чаще раза в 16 с (общая пауза ME). Пауза ME — это не авария: оставляем последнее значение и повторяем после паузы. Аварией считается только отсутствие данных дольше N минут | 1 |
 | Flux `getEnergyInfo` | 5 с | 1 |
 
 Опрос каждой группы распределяется по разным тикам, чтобы не было пиков.

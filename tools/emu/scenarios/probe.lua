@@ -7,6 +7,6 @@ emu.addComponent(mocks.flux())
 emu.addComponent(mocks.chatbox())
 emu.queue = {}
 emu.stdin = {"YES"}
-emu.run("../probe/probe.lua", "--watch", "5", "--cooldown", "--toggle", "2")
+emu.run("../probe/probe.lua", "--watch=5", "--cooldown", "--toggle=2")
 local f = io.open("/home/probe_report.txt", "r")
 print(f and f:read("a") or "НЕТ ОТЧЁТА")

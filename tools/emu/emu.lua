@@ -399,25 +399,30 @@ local function fakeExec(cmd)
     return true
 end
 os.execute = fakeExec
+-- Точная копия логики shell.parse из OpenOS: "--key=value" даёт значение, "--key" и "-abc" дают true,
+-- всё остальное (в том числе число после "--key ") уходит в позиционные аргументы
 local function shellParse(...)
-    local args, opts = {}, {}
-    local list = {...}
-    local i = 1
-    while i <= #list do
-        local a = list[i]
-        local long = type(a) == "string" and a:match("^%-%-(.+)$")
-        if long then
-            local k, v = long:match("^([^=]+)=(.*)$")
-            if k then opts[k] = v
-            elseif list[i + 1] and not tostring(list[i + 1]):match("^%-") then opts[long] = list[i + 1] i = i + 1
-            else opts[long] = true end
-        elseif type(a) == "string" and a:match("^%-%a") then
-            for c in a:sub(2):gmatch(".") do opts[c] = true end
-            if #a == 2 and list[i + 1] and not tostring(list[i + 1]):match("^%-") then opts[a:sub(2)] = list[i + 1] i = i + 1 end
-        else args[#args + 1] = a end
-        i = i + 1
+    local params = table.pack(...)
+    local args, options, doneWithOptions = {}, {}, false
+    for i = 1, params.n do
+        local param = params[i]
+        if not doneWithOptions and type(param) == "string" then
+            if param == "--" then
+                doneWithOptions = true
+            elseif param:sub(1, 2) == "--" then
+                local key, value = param:match("%-%-(.-)=(.*)")
+                if not key then key, value = param:sub(3), true end
+                options[key] = value
+            elseif param:sub(1, 1) == "-" and param ~= "-" then
+                for j = 2, unicode.len(param) do options[unicode.sub(param, j, j)] = true end
+            else
+                table.insert(args, param)
+            end
+        else
+            table.insert(args, param)
+        end
     end
-    return args, opts
+    return args, options
 end
 preload.shell = function() return {execute = fakeExec, parse = shellParse, getWorkingDirectory = function() return "/home" end, resolve = function(p) return p end} end
 preload.term = function() return {clear = function() end, setCursor = function() end, write = function() end, read = function() return "" end, isAvailable = function() return true end} end
