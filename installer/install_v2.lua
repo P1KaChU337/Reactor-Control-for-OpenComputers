@@ -24,6 +24,7 @@ local AUTOSTART_CMD = "/home/reactorcontrol/main.lua"
 
 -- Файлы программы (src/ -> /home/reactorcontrol/). Список проверяется тестом tests/test_installer.lua
 local FILES = {
+    "commands/chat.lua",
     "core/actions.lua",
     "core/app.lua",
     "core/config.lua",
@@ -41,6 +42,8 @@ local FILES = {
     "logic/protection.lua",
     "logic/rate.lua",
     "main.lua",
+    "net/http.lua",
+    "net/remote.lua",
     "ui/braille.lua",
     "ui/format.lua",
     "ui/gfx.lua",

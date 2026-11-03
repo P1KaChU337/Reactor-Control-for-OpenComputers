@@ -101,13 +101,42 @@ local function wrapText(lines, width)
     return out
 end
 
+local remoteChangelog
+local function changelogText(app)
+    local out = {}
+    for _, l in ipairs(CHANGELOG) do out[#out + 1] = l end
+    local list = app.remote and app.remote.changelog
+    if list then
+        out[#out + 1] = ""
+        for i = #list, 1, -1 do
+            local e = list[i]
+            out[#out + 1] = "Версия " .. e.version .. ":"
+            for _, c in ipairs(e.changes) do out[#out + 1] = "- " .. c end
+            out[#out + 1] = ""
+        end
+    else
+        out[#out + 1] = ""
+        out[#out + 1] = "История версий 1.x загружается с GitHub (нужна интернет-карта)..."
+    end
+    return out
+end
+
+local currentApp
 local function lines()
-    if not wrappedCache[tab] then wrappedCache[tab] = wrapText(TABS[tab].text, W - 4) end
+    if tab == 2 and currentApp and currentApp.remote and currentApp.remote.changelog ~= remoteChangelog then
+        remoteChangelog = currentApp.remote.changelog
+        wrappedCache[2] = nil
+    end
+    if not wrappedCache[tab] then
+        local text = tab == 2 and currentApp and changelogText(currentApp) or TABS[tab].text
+        wrappedCache[tab] = wrapText(text, W - 4)
+    end
     return wrappedCache[tab]
 end
 
+local textH = TEXT_H
 local function setScroll(v)
-    local maxScroll = math.max(0, #lines() - TEXT_H)
+    local maxScroll = math.max(0, #lines() - textH)
     scroll = math.max(0, math.min(maxScroll, v))
 end
 
@@ -115,6 +144,7 @@ function M.open() tab, scroll = 1, 0 end
 
 function M.draw(ui)
     local app = ui.app
+    currentApp = app
     G.box(X - 1, Y, W + 2, H, T.modal)
     ui:hit(1, 1, 160, 50, function() ui:closeModal() end)
     ui:hit(X - 1, Y, X + W, Y + H - 1, function() end)
@@ -124,20 +154,29 @@ function M.draw(ui)
         ui.buffer.drawRectangle(X + t.x - 1, Y + 4, t.w, 1, T.modal, i == tab and T.purpleDark or 0x666666, "⠉")
         ui:hit(X + t.x - 1, Y + 3, X + t.x + t.w - 2, Y + 4, function() tab, scroll = i, 0 end)
     end
+    local latest = app.remote and app.remote.latest
+    textH = latest and TEXT_H - 3 or TEXT_H
     local l = lines()
-    for i = 1, TEXT_H do
+    for i = 1, textH do
         local s = l[i + scroll]
         if s then G.text(X + 2, Y + 4 + i, 0x000000, s) end
     end
     -- прокрутка нажатием: верхняя половина текста — вверх, нижняя — вниз
-    ui:hit(X, Y + 5, X + W - 1, Y + 4 + math.floor(TEXT_H / 2), function() setScroll(scroll - 10) end)
-    ui:hit(X, Y + 5 + math.floor(TEXT_H / 2), X + W - 1, Y + 4 + TEXT_H, function() setScroll(scroll + 10) end)
-    if #l > TEXT_H then
-        local pos = math.floor(scroll / math.max(1, #l - TEXT_H) * (TEXT_H - 1))
-        G.rect(X + W - 1, Y + 5, 1, TEXT_H, 0xb4b4b4)
+    ui:hit(X, Y + 5, X + W - 1, Y + 4 + math.floor(textH / 2), function() setScroll(scroll - 10) end)
+    ui:hit(X, Y + 5 + math.floor(textH / 2), X + W - 1, Y + 4 + textH, function() setScroll(scroll + 10) end)
+    if #l > textH then
+        local pos = math.floor(scroll / math.max(1, #l - textH) * (textH - 1))
+        G.rect(X + W - 1, Y + 5, 1, textH, 0xb4b4b4)
         G.rect(X + W - 1, Y + 5 + pos, 1, 1, T.purpleDark)
     end
     G.text(X + 4, Y + H - 1, 0x999999, "P.S. Нажмите вне окна, чтобы выйти. Текст листается колесом или нажатием")
+    if latest then
+        G.text(X + 3, Y + H - 3, 0x000000, "Доступна новая версия v" .. latest .. "!")
+        ui:button("update", X + W - 30, Y + H - 4, 26, "Обновить до v" .. latest, ui:isPressed("update") and T.purple or T.purpleDark, 0xffffff, function()
+            app.log:warn("Обновление до v" .. latest .. ": реакторы будут остановлены, программа перезапустится")
+            app:requestUpdate()
+        end)
+    end
 end
 
 function M.scroll(ui, x, y, dir) setScroll(scroll - dir * 3) end

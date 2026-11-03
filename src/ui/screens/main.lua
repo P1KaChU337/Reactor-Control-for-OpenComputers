@@ -167,6 +167,14 @@ local function drawConsole(ui, flux)
     G.hline(123, 4, 35, S.console[2], th.bg2)
     G.text(124, 3, th.text, "Информационное окно отладки:")
     local height = flux and 19 or 22
+    local top = 4
+    if ui.app.remote.supporters then
+        -- бегущая строка спонсоров, как в v1.1.3
+        G.text(124, 5, th.text, "Спасибо за поддержку:")
+        M.drawMarquee(ui)
+        top = 6
+        height = height - 2
+    end
     local lines = {}
     for i = #log.entries, 1, -1 do
         local e = log.entries[i]
@@ -184,8 +192,24 @@ local function drawConsole(ui, flux)
     -- старые строки тускнеют, как в v1.1.3
     for i, l in ipairs(lines) do
         local fade = (#lines - i) / math.max(height, 1) * 0.45
-        G.text(124, 4 + i, G.lerp(l.color, th.bg, fade), l.text)
+        G.text(124, top + i, G.lerp(l.color, th.bg, fade), l.text)
     end
+end
+
+M.MARQUEE_COLOR = 0xf15f2c
+function M.drawMarquee(ui)
+    local text = ui.app.remote.supporters
+    if not text then return end
+    local unicode = require("unicode")
+    local th = ui:theme()
+    local w = 33
+    G.rect(124, 6, w, 1, th.bg)
+    local loop = text .. "   •   "
+    local len = unicode.len(loop)
+    if len - 7 <= w then G.text(124, 6, M.MARQUEE_COLOR, text) return end
+    local pos = (ui.marqueePos or 0) % len
+    local visible = unicode.sub(loop .. loop, pos + 1, pos + w)
+    G.text(124, 6, M.MARQUEE_COLOR, visible)
 end
 
 local function drawFluid(ui, flux)

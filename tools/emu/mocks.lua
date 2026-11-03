@@ -182,4 +182,28 @@ function M.chatbox()
     return p
 end
 
+-- Интернет-карта: request(url) -> handle; ответ берётся из __EMU__.http[url] (нет — 404),
+-- соединение "устанавливается" за один шаг, данные приходят кусками
+function M.internet()
+    local p = {type = "internet", address = addr("inet")}
+    function p.isHttpEnabled() return true end
+    function p.request(url)
+        local data = __EMU__.http and __EMU__.http[url]
+        local connected, pos = false, 1
+        local h = {}
+        function h.finishConnect() local r = connected connected = true return r end
+        function h.response() return data and 200 or 404, data and "OK" or "Not Found", {} end
+        function h.read(n)
+            if not data then return nil end
+            if pos > #data then return nil end
+            local chunk = data:sub(pos, pos + 999)
+            pos = pos + 1000
+            return chunk
+        end
+        function h.close() end
+        return h
+    end
+    return p
+end
+
 return M

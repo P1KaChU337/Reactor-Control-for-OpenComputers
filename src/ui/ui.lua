@@ -11,6 +11,7 @@ UI.__index = UI
 UI.PRESS_TIME = 0.2       -- сколько кнопка выглядит нажатой
 UI.CLOCK_INTERVAL = 1     -- перерисовка часов и таймеров
 UI.MIN_FRAME = 0.1        -- не чаще 10 кадров в секунду
+UI.MARQUEE_STEP = 0.3     -- бегущая строка: символ за шаг
 
 -- opts: imagesDir
 function UI.new(app, buffer, opts)
@@ -82,6 +83,9 @@ function UI:timeUntilNext()
         local w = self.modal.wakeIn(self)
         if w and w < t then t = w end
     end
+    if self.app.remote and self.app.remote.supporters and not self.modal then
+        t = math.min(t, (self.nextMarquee or 0) - now)
+    end
     if self.dirty then t = math.min(t, self.lastFrame + UI.MIN_FRAME - now) end
     return math.max(0, t)
 end
@@ -96,6 +100,19 @@ function UI:frame(force)
     if self.modal and self.modal.wakeIn then
         local w = self.modal.wakeIn(self)
         if w and w <= 0 then need = true end
+    end
+    -- бегущая строка двигается отдельно: перерисовывается и отправляется на экран только её строка
+    local marquee = self.app.remote and self.app.remote.supporters and not self.modal
+    if marquee and now >= (self.nextMarquee or 0) then
+        self.marqueePos = (self.marqueePos or 0) + 1
+        self.nextMarquee = now + UI.MARQUEE_STEP
+        if not need then
+            self.buffer.setDrawLimit(124, 6, 156, 6)
+            self.main.drawMarquee(self)
+            self.buffer.drawChanges()
+            self.buffer.resetDrawLimit()
+            return false
+        end
     end
     if not need or (not force and now - self.lastFrame < UI.MIN_FRAME) then return false end
     self.lastFrame = now

@@ -10,12 +10,17 @@ local discovery = require("hw.discovery")
 local reactorHw = require("hw.reactor")
 local meHw = require("hw.me")
 local fluxHw = require("hw.flux")
+local Http = require("net.http")
+local remote = require("net.remote")
+local chat = require("commands.chat")
 
 local App = {}
 App.__index = App
 
 App.VERSION = "2.0.0-dev"
 App.VERSION_SHORT = "2.0-dev"
+-- Откуда брать обновления v2 (файл version_v2.txt в корне ветки). После слияния v2 в main — "main".
+App.UPDATE_BRANCH = "claude/keen-volta-rnypyl"
 
 -- Интервалы опроса (секунды) и сдвиги, чтобы группы не попадали в один тик
 App.POLL = {
@@ -54,6 +59,8 @@ function App.new(deps)
         if not ok then self.log:error("Не удалось сохранить настройки: " .. tostring(err)) end
     end
     self.actions = Actions.new(self)
+    self.http = Http.new(deps.component, self.clock)
+    self.remote = {supporters = nil, changelog = nil, latest = nil}
     self.handlers = {}   -- имя события -> функция (интерфейс и чат добавляют свои)
     self.running = false
     return self
@@ -107,6 +114,7 @@ function App:scan()
             if obs ~= nil then r.running = obs end
             reactorHw.pollStats(r, p)
             reactorHw.pollRods(r, p, self.clock())
+            if r.kind == "fluid" then reactorHw.pollCoolant(r, p, self.clock()) end
         end
     end)
     if changed then self.saveConfig() end
@@ -145,7 +153,51 @@ function App:schedule()
     end, P.flux[2])
     s:every("scan", P.scan[1], function() self:scan() end, P.scan[2])
     s:every("logflush", P.logflush[1], function() self.log:flush() end, P.logflush[2])
+    -- сеть: запросы продвигаются шагами, данные с GitHub обновляются редко
+    s:every("net", 0.25, function()
+        if self.http:busy() then self.http:step() end
+    end, 0.2)
+    s:every("supporters", 600, function() self:fetchSupporters() end, 3)
+    s:every("changelog", 1800, function() self:fetchChangelog() end, 5)
+    s:every("updates", 3600, function() self:checkUpdates() end, 8)
 end
+
+function App:fetchSupporters()
+    if not self.http:available() then return end
+    self.http:get(remote.REPO .. remote.MAIN .. "/supporters.txt", function(ok, data)
+        if ok then
+            local line = remote.parseSupporters(data)
+            if line and line ~= self.remote.supporters then self.remote.supporters = line self.state:touch() end
+        end
+    end)
+end
+
+function App:fetchChangelog()
+    if not self.http:available() then return end
+    self.http:get(remote.REPO .. remote.MAIN .. "/changelog.lua", function(ok, data)
+        if not ok then self.log:debug("changelog: " .. tostring(data)) return end
+        local list = remote.parseChangelog(data)
+        if list then self.remote.changelog = list self.state:touch()
+        else self.log:debug("changelog: не удалось разобрать") end
+    end)
+end
+
+function App:checkUpdates()
+    if not self.cfg.updateCheck or not self.http:available() then return end
+    self.http:get(remote.REPO .. App.UPDATE_BRANCH .. "/version_v2.txt", function(ok, data)
+        if not ok then self.log:debug("Проверка обновлений: " .. tostring(data)) return end
+        local v = tostring(data):match("^%s*([%w%.%-]+)")
+        if v and remote.isNewer(v, App.VERSION) then
+            if self.remote.latest ~= v then
+                self.remote.latest = v
+                self.log:warn("Доступна новая версия " .. v .. "! Обновить: кнопка в окне «Информация» или /home/reactorcontrol/update.lua")
+                self.state:touch()
+            end
+        end
+    end)
+end
+
+function App:requestUpdate() self.exitReason = "update" self.running = false end
 
 function App:init()
     local log = self.log
@@ -174,6 +226,8 @@ function App:init()
         self:forEachOnline(function(r) if r.running then r.desired = true end end)
     end
     self.actions:syncUsers()
+    chat.attach(self)
+    chat.greet(self)
     self:schedule()
     self.state:touch()
 end
