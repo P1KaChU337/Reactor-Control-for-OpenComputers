@@ -31,7 +31,8 @@ local REACTOR_DOC = {
 -- Реактор HiTech (тип компонента "htc_reactors_nuclear_reactor").
 -- Динамика снята probe --watch=120 с работающего реактора 6 уровня (20 MOX):
 --   * буфер убывает на drain = ~96768 mB каждую секунду (это ~100 x getFluidCoolantConsume),
---     а ME доливает 3 x drain раз в 3 секунды: буфер ходит 91% -> 82% -> 73% -> 91%;
+--     а раз в 3 секунды доливается до полного: буфер ходит 91% -> 82% -> 73% -> 91%;
+--   * у остановленного реактора буфер НЕ доливается (на сервере простаивающий держал 73% часами);
 --   * топливо каждого стержня убывает в среднем на 2.95 ед./с (шагами по 2 и 4);
 --   * температура всегда 9998 из 9999 (у калифорниевого реактора 0 из 0), генерация постоянная.
 -- state.supply = false имитирует перебой подачи хладагента из ME.
@@ -66,9 +67,9 @@ function M.reactor(opts)
             s.lastSec = s.lastSec + 1
             if s.active then
                 if s.fluid then
-                    s.coolant = s.coolant - s.drain
-                    if s.supply and s.lastSec % s.refillPeriod == 0 then s.coolant = s.coolant + s.drain * s.refillPeriod end
-                    s.coolant = math.max(0, math.min(s.maxCoolant, s.coolant))
+                    -- раз в refillPeriod буфер доливается ДО ПОЛНОГО (на сервере видно 91% = полный минус секунда расхода)
+                    if s.supply and s.lastSec % s.refillPeriod == 0 then s.coolant = s.maxCoolant end
+                    s.coolant = math.max(0, s.coolant - s.drain)
                     if s.coolant <= 0 then s.active = false s.meltdown = true end
                 end
                 for _, r in pairs(s.rods) do r.fuel = math.max(0, r.fuel - s.fuelRate) end

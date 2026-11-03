@@ -270,7 +270,13 @@ local function advance(dt)
         emu.time = math.min(target, emu.time + 0.05)
         runActions()
         runTimers()
-        if emu.time >= emu.endTime then error("EMU_END", 0) end
+        if emu.time >= emu.endTime then
+            -- конец сценария: программа просто замирает (её корутину больше не продолжают)
+            if emu.programCo and coroutine.running() == emu.programCo then
+                coroutine.yield("EMU_END")
+            end
+            error("EMU_END", 0)
+        end
     end
 end
 emu.advance = advance
@@ -358,7 +364,7 @@ end
 local rawPullWith = pullWith
 pullWith = function(timeout, filter)
     local co, main = coroutine.running()
-    if not main then
+    if not main and co ~= emu.programCo then
         local deadline = emu.time + (timeout or math.huge)
         while true do
             local ev = popEvent(filter)
@@ -377,6 +383,7 @@ function fs.exists(p) local f = rawOpen(realPath(p), "r") if f then f:close() re
 function fs.isDirectory(p) return sh("test -d '" .. realPath(p) .. "'") == true end
 function fs.makeDirectory(p) return sh("mkdir -p '" .. realPath(p) .. "'") == true end
 function fs.remove(p) return sh("rm -rf '" .. realPath(p) .. "'") == true end
+function fs.rename(a, b) return sh("mv '" .. realPath(a) .. "' '" .. realPath(b) .. "'") == true end
 function fs.size(p) local f = rawOpen(realPath(p), "rb") if not f then return 0 end local s = f:seek("end") f:close() return s end
 function fs.list(p) local r = {} local h = io.popen("ls -1 '" .. realPath(p) .. "' 2>/dev/null") for l in h:lines() do table.insert(r, l) end h:close() local i = 0 return function() i = i + 1 return r[i] end end
 function fs.concat(...) return (table.concat({...}, "/"):gsub("/+", "/")) end
@@ -454,6 +461,24 @@ io.read = function() local l = table.remove(emu.stdin, 1) trace("io.read ->", to
 io.write = function(...) for _, v in ipairs({...}) do rawStderr:write(tostring(v)) end end
 io.stderr = setmetatable({write = function(_, ...) trace("stderr:", ...) end}, {})
 
+table.insert(package.searchers, 2, function(name)
+    local rel = name:gsub("%.", "/")
+    local tried = {}
+    for template in package.path:gmatch("[^;]+") do
+        if template:sub(1, 1) == "/" and not template:find("^" .. emu.root:gsub("%p", "%%%0")) then
+            local vpath = template:gsub("%?", rel)
+            local f = rawOpen(realPath(vpath), "r")
+            if f then
+                local code = f:read("a") f:close()
+                local chunk, err = load(code, "@" .. vpath)
+                if not chunk then error(err, 0) end
+                return chunk, vpath
+            end
+            tried[#tried + 1] = "\n\tno file '" .. vpath .. "' (emu)"
+        end
+    end
+    return table.concat(tried)
+end)
 package.path = REPO .. "/lib/?.lua;" .. REPO .. "/lib/FormatModules/?.lua;" .. EMU_DIR .. "/?.lua;" .. package.path
 
 -- image.lua грузит форматы через loadfile("/lib/FormatModules/OCIF.lua") — подкладываем в песочницу
@@ -481,13 +506,43 @@ function emu.screenText()
 end
 function emu.run(path, ...)
     local chunk = assert(rawLoadfile(path))
-    local ok, err = xpcall(chunk, debug.traceback, ...)
-    if not ok and not tostring(err):find("EMU_END") and not tostring(err):find("EMU_EXIT") then
-        trace("program error:", tostring(err))
-        return false, err
+    local co = coroutine.create(chunk)
+    emu.programCo = co
+    local ok, res = coroutine.resume(co, ...)
+    emu.programCo = nil
+    if not ok then
+        if tostring(res):find("EMU_EXIT") or tostring(res):find("EMU_END") then return true end
+        local tb = debug.traceback(co, tostring(res))
+        trace("program error:", tb)
+        return false, tb
     end
     return true
 end
+-- Скопировать каталог репозитория в песочницу (как установщик кладёт программу в игре)
+function emu.install(srcDir, virtualDir)
+    sh("mkdir -p '" .. realPath(virtualDir) .. "' && cp -r '" .. srcDir .. "/.' '" .. realPath(virtualDir) .. "/'")
+end
+-- Запустить программу по ВИРТУАЛЬНОМУ пути (внутри песочницы), как её запустил бы OpenOS
+function emu.runVirtual(vpath, ...)
+    local f = assert(rawOpen(realPath(vpath), "r"))
+    local code = f:read("a") f:close()
+    local chunk = assert(load(code, "@" .. vpath))
+    local tmp = os.tmpname()
+    local tf = rawOpen(tmp, "w") tf:write("") tf:close()
+    local co = coroutine.create(chunk)
+    emu.programCo = co
+    local ok, res = coroutine.resume(co, ...)
+    emu.programCo = nil
+    os.remove(tmp)
+    if not ok then
+        if tostring(res):find("EMU_EXIT") or tostring(res):find("EMU_END") then return true end
+        local tb = debug.traceback(co, tostring(res))
+        trace("program error:", tb)
+        return false, tb
+    end
+    return true
+end
+function emu.interrupt() computer.pushSignal("interrupted", emu.time) end
 
 local scenario = assert(arg[1], "usage: emu.lua <scenario.lua>")
 return rawDofile(scenario)
