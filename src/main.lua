@@ -33,6 +33,16 @@ if nogui then
         io.write(string.format("[%7.1f] %-5s %s%s\n", e.time - app.state.startedAt, e.level:upper(), e.text,
             e.count > 1 and (" (x" .. e.count .. ")") or ""))
     end)
+    -- управление с клавиатуры
+    io.write("Клавиши: s — запустить все, x — остановить все, 1-6 — вкл/выкл реактор, m — обновить МЭ, q — выход\n")
+    app:on("key_down", function(_, _, char)
+        local c = char and char > 0 and string.char(char):lower() or ""
+        if c == "s" then app.actions:start(nil, "клавиатура")
+        elseif c == "x" then app.actions:stop(nil, "клавиатура")
+        elseif c == "m" then app.actions:refreshMe()
+        elseif c == "q" then app:requestExit()
+        elseif c:match("^[1-6]$") then app.actions:toggle(tonumber(c), "клавиатура") end
+    end)
 else
     buffer = require("doubleBuffering")
     buffer.setResolution(160, 50)

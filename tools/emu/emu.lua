@@ -222,13 +222,17 @@ function component.proxy(a)
     if p.type == "gpu" then return p end
     -- оборачиваем, чтобы считать вызовы и иметь возможность "отключить" компонент
     local w = {type = p.type, address = p.address, slot = -1}
+    -- Как в OC: методы прокси — вызываемые таблицы (type() == "table"), а не функции
     for k, v in pairs(p) do
         if type(v) == "function" then
-            w[k] = function(...)
-                emu.componentCalls = emu.componentCalls + 1
-                if p.__removed then error("no such component", 0) end
-                return v(...)
-            end
+            w[k] = setmetatable({name = k, address = p.address}, {
+                __call = function(_, ...)
+                    emu.componentCalls = emu.componentCalls + 1
+                    if p.__removed then error("no such component", 0) end
+                    return v(...)
+                end,
+                __tostring = function() return "function" end,
+            })
         end
     end
     return w

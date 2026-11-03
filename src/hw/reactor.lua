@@ -5,9 +5,11 @@ local M = {}
 M.TYPE_PREFIX = "htc_reactors"
 
 -- Безопасный вызов: -> ok, value. Ошибки и nil не роняют программу.
+-- В OpenComputers методы прокси — НЕ функции, а вызываемые таблицы (с __call), поэтому проверяем только на nil.
 function M.call(proxy, method, ...)
-    if not proxy or type(proxy[method]) ~= "function" then return false, "нет метода " .. tostring(method) end
-    local ok, v = pcall(proxy[method], ...)
+    local f = proxy and proxy[method]
+    if f == nil then return false, "нет метода " .. tostring(method) end
+    local ok, v = pcall(f, ...)
     if not ok then return false, v end
     return true, v
 end
