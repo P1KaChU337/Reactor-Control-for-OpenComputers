@@ -169,3 +169,51 @@ T.test("защита: расход ещё не замерен -> номинал 
     local d, measured = protection.drainRate(r, config.defaults())
     T.eq(d, 96700); T.no(measured)
 end)
+
+-- Ручной запуск через actions (с моками железа)
+local Actions = require("core.actions")
+local Log = require("core.log")
+local function appFor(w)
+    local app = {state = w.st, cfg = w.cfg, log = Log.new({clock = w.c.fn}), clock = w.c.fn,
+        proxies = {reactors = {}}, saveConfig = function() end}
+    for slot, r in pairs(w.st.reactors) do
+        app.proxies.reactors[slot] = {
+            activate = function() r.running = true return true end,
+            deactivate = function() r.running = false return true end,
+        }
+    end
+    app.actions = Actions.new(app)
+    return app
+end
+
+T.test("защита: 3 ручных запуска при пустом буфере, потом блокировка", function()
+    local w = world()
+    local app = appFor(w)
+    w.run(21)
+    w.supply[1] = false
+    w.run(10)
+    T.ok(w.r().faults.buffer_low)
+    for i = 1, 3 do
+        app.actions:start(1, "тест")
+        T.ok(w.r().running, "попытка " .. i .. " запускает")
+        w.run(5)                       -- подачи нет: защита снова останавливает
+        T.no(w.r().running)
+    end
+    app.actions:start(1, "тест")       -- 4-я попытка
+    T.no(w.r().running, "заблокирован")
+    T.ok(w.r().faults.locked)
+    local red = false
+    for _, e in ipairs(app.log.entries) do if e.level == "error" and e.text:find("интерфейс реактора") then red = true end end
+    T.ok(red, "красное сообщение в журнале")
+    app.actions:start(nil, "тест")     -- запуск всех тоже не трогает заблокированный
+    T.no(w.r().running)
+end)
+
+T.test("защита: блокировку снимает запуск через интерфейс реактора", function()
+    local w = world()
+    local app = appFor(w)
+    w.r().faults.locked = {since = 0, text = "x"}
+    w.r().running = false
+    app.actions:observeRunning(w.r(), true)
+    T.no(w.r().faults.locked); T.eq(w.r().manualTries, 0); T.ok(w.r().startedAt)
+end)

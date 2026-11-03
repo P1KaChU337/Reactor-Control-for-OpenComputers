@@ -83,7 +83,7 @@ function M.pollRods(r, proxy, now)
     local ok, v = M.call(proxy, "getAllFuelRodsStatus")
     if not ok then return false end
     r.rods = M.rodsSummary(v)
-    r.burn:add(now, r.rods, r.running)
+    r.burn:add(now, r.rods, r.running, r.stoppedAt)
     return true
 end
 

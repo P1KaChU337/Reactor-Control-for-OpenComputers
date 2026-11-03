@@ -48,6 +48,7 @@ local FILES = {
     "ui/screens/main.lua",
     "ui/screens/settings.lua",
     "ui/sprites.lua",
+    "ui/textui.lua",
     "ui/theme.lua",
     "ui/ui.lua",
     "update.lua",

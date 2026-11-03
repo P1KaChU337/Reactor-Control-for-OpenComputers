@@ -118,7 +118,9 @@ function App:schedule()
     s:every("coolant", P.coolant[1], function(now)
         self:forEachOnline(function(r, p)
             -- работающие жидкостные — для защиты; остановленные защитой — чтобы решать об автозапуске по свежим данным
-            if r.kind == "fluid" and (r.running or r.halted) then reactorHw.pollCoolant(r, p, now) end
+            if r.kind == "fluid" and (r.running or r.halted or r.faults.buffer_low or r.faults.locked) then
+                reactorHw.pollCoolant(r, p, now)
+            end
         end)
         self.state:touch()
     end, P.coolant[2])

@@ -71,3 +71,11 @@ T.test("burn: после остановки отсчёт замирает (ба�
     local fr = b:remaining(50, true)
     T.near(fr, (940 - 40) / 2)
 end)
+
+T.test("burn: интервал с остановкой не идёт в замер скорости", function()
+    local b = rate.burn(600)
+    b:add(0, {min = 1000, max = 1000, sum = 20000, count = 20}, true)
+    b:add(30, {min = 940, max = 940, sum = 18800, count = 20}, true)       -- 2 ед./с
+    b:add(60, {min = 930, max = 930, sum = 18600, count = 20}, true, 35)   -- стоял с 35 по ~58
+    T.near(b:rate(), 2, 1e-9)
+end)

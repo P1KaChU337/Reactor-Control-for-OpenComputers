@@ -97,7 +97,10 @@ local function drawWidget(ui, slot, r)
 
     -- кнопка
     local label, color, onClick
-    if r.running then
+    if r.faults.locked then
+        label, color = "Заблокирован", 0x666666
+        onClick = function() app.actions:start(slot, "кнопка") end   -- напишет в журнал, что делать
+    elseif r.running then
         label, color = "Отключить", T.red
         onClick = function() app.actions:stop(slot, "кнопка") end
     elseif r.desired and r.halted and not r.faults.buffer_low and not r.faults.unstable then

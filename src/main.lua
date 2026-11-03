@@ -1,6 +1,7 @@
 -- Reactor Control v2: точка входа.
 --   main.lua           обычный запуск с интерфейсом
---   main.lua --nogui   без интерфейса, журнал в терминал (для отладки)
+--   main.lua --nogui   текстовый режим: журнал слева, реакторы справа, управление с клавиатуры
+--   main.lua --plain   только строки журнала в терминал
 local function scriptDir()
     local src = debug.getinfo(1, "S").source or ""
     local path = src:match("^[@=](.*)$")
@@ -18,8 +19,11 @@ for name in pairs(package.loaded) do
 end
 
 local args = {...}
-local nogui = false
-for _, a in ipairs(args) do if a == "--nogui" then nogui = true end end
+local nogui, plain = false, false
+for _, a in ipairs(args) do
+    if a == "--nogui" then nogui = true end
+    if a == "--plain" then nogui, plain = true, true end
+end
 
 local component = require("component")
 local computer = require("computer")
@@ -37,12 +41,21 @@ local app = App.new({
 
 local buffer
 if nogui then
-    app.log:onEntry(function(e)
-        io.write(string.format("[%7.1f] %-5s %s%s\n", e.time - app.state.startedAt, e.level:upper(), e.text,
-            e.count > 1 and (" (x" .. e.count .. ")") or ""))
-    end)
+    if plain then
+        -- --plain: просто строки журнала в терминал (для логов и отладки)
+        app.log:onEntry(function(e)
+            io.write(string.format("[%7.1f] %-5s %s%s\n", e.time - app.state.startedAt, e.level:upper(), e.text,
+                e.count > 1 and (" (x" .. e.count .. ")") or ""))
+        end)
+    else
+        -- --nogui: текстовая панель (журнал слева, реакторы справа), без прокрутки
+        local TUI = require("ui.textui")
+        local tui = TUI.new(app, component.gpu)
+        app.onFrame = function() tui:frame() end
+        app.waitHint = function() return tui:timeUntilNext() end
+        app.tui = tui
+    end
     -- управление с клавиатуры
-    io.write("Клавиши: s — запустить все, x — остановить все, 1-6 — вкл/выкл реактор, m — обновить МЭ, q — выход\n")
     app:on("key_down", function(_, _, char)
         local c = char and char > 0 and string.char(char):lower() or ""
         if c == "s" then app.actions:start(nil, "клавиатура")
@@ -68,6 +81,6 @@ app:run()
 if buffer then
     buffer.clear(0x000000)
     buffer.drawChanges(true)
-    pcall(function() require("term").clear() end)
 end
+if buffer or app.tui then pcall(function() require("term").clear() end) end
 if app.exitReason == "restart" then computer.shutdown(true) end

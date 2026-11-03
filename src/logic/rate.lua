@@ -55,9 +55,12 @@ function M.burn(windowSec)
 end
 
 -- sample = {min=, max=, sum=, count=} — сводка по стержням (см. hw.reactor.rodsSummary)
-function Burn:add(t, sample, running)
+-- stoppedAt: когда реактор последний раз останавливался. Если между замерами он стоял,
+-- интервал не годится для замера скорости (топливо горело не всё время).
+function Burn:add(t, sample, running, stoppedAt)
     local last = self.last
-    if running and last and last.running and sample and last.sample
+    local interrupted = last and stoppedAt and stoppedAt > last.t
+    if running and last and last.running and not interrupted and sample and last.sample
         and sample.count == last.sample.count and sample.count > 0 then
         local dt = t - last.t
         local burned = (last.sample.sum - sample.sum) / sample.count

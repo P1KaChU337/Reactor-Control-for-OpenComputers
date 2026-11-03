@@ -18,6 +18,7 @@ M.TEXT = {
     buffer_low = "Мало жидкости в буфере",
     unstable = "Частые аварии",
     offline = "Нет связи",
+    locked = "Заблокирован: нет подачи",
 }
 
 local function setFault(r, code, now, events)
@@ -38,7 +39,7 @@ end
 
 function M.firstFault(r)
     -- порядок важности для показа на экране
-    for _, code in ipairs({"offline", "unstable", "me_lost", "me_low", "buffer_low"}) do
+    for _, code in ipairs({"offline", "locked", "unstable", "me_lost", "me_low", "buffer_low"}) do
         if r.faults[code] then return code, r.faults[code].text end
     end
 end
@@ -88,6 +89,22 @@ function M.evaluate(state, cfg, now)
                     elseif r.coolantMax and r.coolantMax > 0 then low = r.coolant / r.coolantMax < cfg.bufferStopPct end
                     if low then setFault(r, "buffer_low", now, events) end
                 end
+                -- Блокировка после нескольких ручных запусков при пустом буфере (реактор может взорваться).
+                -- Снимается, если буфер заполнился (или реактор запустили через его интерфейс — см. actions:observeRunning).
+                if r.faults.locked and r.coolant and r.coolantMax and r.coolantMax > 0
+                    and r.coolant / r.coolantMax >= cfg.bufferResumePct then
+                    r.faults.locked = nil
+                    r.faults.buffer_low = nil
+                    r.manualTries = 0
+                    events[#events + 1] = {level = "info", color = "ok", slot = r.slot,
+                        text = "Реактор #" .. r.slot .. ": буфер заполнен, блокировка снята"}
+                end
+                -- Минута стабильной работы — счётчик ручных попыток обнуляется
+                if r.running and (r.manualTries or 0) > 0 and not r.faults.buffer_low
+                    and r.startedAt and now - r.startedAt >= 60 then
+                    r.manualTries = 0
+                end
+
                 -- Авария буфера снимается только ручным запуском (core.actions:start), если не включён
                 -- bufferAutoRestart: раз буфер опустел, хладагент не доходит из ME до реактора — это надо
                 -- идти чинить руками. В простое буфер не доливается, так что ждать его заполнения бессмысленно.

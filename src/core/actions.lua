@@ -60,6 +60,26 @@ function Actions:start(slot, who)
             offline = offline + 1
             log:warn("Реактор #" .. r.slot .. ": нет связи, запуск невозможен")
         else
+            -- Запуск при пустом буфере опасен (реактор может взорваться): даём не больше maxManualStarts попыток
+            local blocked = false
+            if r.faults.locked then
+                blocked = true
+            elseif r.faults.buffer_low and not r.running then
+                r.manualTries = (r.manualTries or 0) + 1
+                if r.manualTries > cfg.maxManualStarts then
+                    r.faults.locked = {since = self.app.clock(), text = protection.TEXT.locked}
+                    blocked = true
+                else
+                    log:warn(string.format("Реактор #%d: запуск при пустом буфере, попытка %d из %d",
+                        r.slot, r.manualTries, cfg.maxManualStarts))
+                end
+            end
+            if blocked then
+                r.desired = false
+                r.halted = false
+                log:error("Реактор #" .. r.slot .. " заблокирован: хладагент не поступает в реактор. "
+                    .. "Проверьте подключение МЭ к реактору и запустите вручную через интерфейс реактора")
+            else
             r.desired = true
             -- ручной запуск сбрасывает "частые аварии" и аварию буфера: пользователь берёт решение на себя,
             -- защита всё равно остановит реактор, если буфер начнёт пустеть
@@ -79,10 +99,11 @@ function Actions:start(slot, who)
                 started = started + 1
                 log:ok("Реактор #" .. r.slot .. " (" .. kindName(r) .. ") запущен!")
             end
+            end
         end
     end
     if not slot then
-        if started == 0 and waiting == 0 and offline == 0 then
+        if started == 0 and waiting == 0 and offline == 0 and already == #list then
             log:warn("Все реакторы уже запущены!")
         elseif started > 0 and started + already == #list then
             log:ok("Реакторы запущены! (" .. (started + already) .. "/" .. #list .. ")")
@@ -125,7 +146,7 @@ end
 function Actions:toggle(slot, who)
     local r = self.app.state.reactors[slot]
     if not r then return end
-    if r.running or r.desired then self:stop(slot, who) else self:start(slot, who) end
+    if r.running then self:stop(slot, who) else self:start(slot, who) end
 end
 
 -- Команды защиты
@@ -153,7 +174,15 @@ function Actions:observeRunning(r, observed)
         r.running = true
         r.desired = true
         r.halted = false
-        log:info("Реактор #" .. r.slot .. " запущен не программой")
+        r.startedAt = self.app.clock()   -- льготный период до первого долива, как при запуске из программы
+        if r.faults.locked or r.faults.buffer_low then
+            r.faults.locked = nil
+            r.faults.buffer_low = nil
+            r.manualTries = 0
+            log:ok("Реактор #" .. r.slot .. " запущен через интерфейс реактора, блокировка снята")
+        else
+            log:info("Реактор #" .. r.slot .. " запущен не программой")
+        end
     else
         r.running = false
         r.stoppedAt = self.app.clock()

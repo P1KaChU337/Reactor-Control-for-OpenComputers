@@ -45,3 +45,13 @@ T.test("config: сохранение и чтение, повреждённый �
     T.eq(info2.source, "default"); T.eq(d.threshold, 50000)
     local bf = io.open(dir .. "/save.cfg.broken", "r"); T.ok(bf, "битый файл сохранён рядом"); bf:close()
 end)
+
+T.test("config: все параметры, которые читают защита и интерфейс, есть в схеме", function()
+    local used = {}
+    for _, f in ipairs({"src/logic/protection.lua", "src/core/actions.lua", "src/core/app.lua",
+        "src/ui/screens/main.lua", "src/ui/screens/settings.lua", "src/ui/textui.lua"}) do
+        local code = io.open(f):read("a")
+        for k in code:gmatch("cfg%.([%a_][%w_]*)") do used[k] = f end
+    end
+    for k, f in pairs(used) do T.ok(config.SCHEMA[k], "нет параметра '" .. k .. "' (используется в " .. f .. ")") end
+end)
