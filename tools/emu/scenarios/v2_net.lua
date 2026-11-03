@@ -7,7 +7,7 @@ emu.install("../../src", "/home/reactorcontrol")
 local REPO = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/"
 local rf = function(p) local f = assert(rawget(_G, "__EMU_RAW_OPEN__") and nil or io.popen("cat ../../" .. p)) local d = f:read("a") f:close() return d end
 emu.http = {
-    [REPO .. "main/supporters.txt"] = rf("supporters.txt"),
+    [REPO .. "claude/keen-volta-rnypyl/about_v2.txt"] = rf("about_v2.txt"):gsub("Спасибо за поддержку:", "Спасибо за поддержку (с GitHub):"),
     [REPO .. "main/changelog.lua"] = rf("changelog.lua"),
     [REPO .. "claude/keen-volta-rnypyl/version_v2.txt"] = "2.0.1\n",
     [REPO .. "claude/keen-volta-rnypyl/changelog_v2.lua"] = rf("changelog_v2.lua"):gsub("}%s*$", "") ..
@@ -30,8 +30,9 @@ emu.queue = {}
 local function shot(n) emu.dump(OUT .. "/net_" .. n .. ".txt") end
 emu.at(11, function() shot("00_update_modal") end)
 emu.at(11.5, function() emu.touch(75, 38) end)  -- «Позже»
-emu.at(12, function() shot("01_marquee") end)
-emu.at(13, function() shot("02_marquee_moved") end)
+emu.at(12, function() emu.touch(6, 48) end)       -- Инфо, вкладка «Общая информация»
+emu.at(12.5, function() shot("01_about") end)
+emu.at(13, function() emu.touch(5, 49) end)
 emu.at(13.5, function() emu.chat("Boss", "@start") end)
 emu.at(14, function() emu.chat("Stranger", "@stop") end)
 emu.at(16, function() emu.chat("Boss", "@status") end)

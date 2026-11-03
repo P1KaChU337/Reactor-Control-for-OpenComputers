@@ -1,4 +1,4 @@
--- Данные с GitHub: спонсоры (бегущая строка), история изменений, проверка обновлений.
+-- Данные с GitHub: текст «Общая информация», история изменений, проверка обновлений.
 -- Ничего из скачанного не исполняется с доступом к окружению.
 local serialize = require("core.serialize")
 
@@ -31,11 +31,18 @@ function M.parseChangelog(text)
     return #out > 0 and out or nil
 end
 
-function M.parseSupporters(text)
-    if type(text) ~= "string" then return nil end
-    local line = text:match("^[^\r\n]*")
-    if not line or not line:match("%S") then return nil end
-    return line
+-- about_v2.txt — обычный текст для вкладки «Общая информация». Строки, начинающиеся с "#", — комментарии.
+-- Пустая строка — отступ между абзацами.
+function M.parseAbout(text)
+    if type(text) ~= "string" or #text == 0 then return nil end
+    text = text:gsub("^\239\187\191", ""):gsub("\r", "")
+    local out = {}
+    for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+        if not line:match("^#") then out[#out + 1] = line end
+    end
+    while out[1] == "" do table.remove(out, 1) end
+    while out[#out] == "" do table.remove(out) end
+    return #out > 0 and out or nil
 end
 
 -- "2.0.1" > "2.0.0-dev"? Числа сравниваются по порядку, версия с суффиксом (-dev) младше такой же без него.

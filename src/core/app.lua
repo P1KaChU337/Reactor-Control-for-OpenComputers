@@ -60,7 +60,7 @@ function App.new(deps)
     end
     self.actions = Actions.new(self)
     self.http = Http.new(deps.component, self.clock)
-    self.remote = {supporters = nil, changelog = nil, latest = nil}
+    self.remote = {about = nil, changelog = nil, changelogV2 = nil, latest = nil}
     self.handlers = {}   -- имя события -> функция (интерфейс и чат добавляют свои)
     self.running = false
     return self
@@ -157,18 +157,18 @@ function App:schedule()
     s:every("net", 0.25, function()
         if self.http:busy() then self.http:step() end
     end, 0.2)
-    s:every("supporters", 600, function() self:fetchSupporters() end, 3)
+    s:every("about", 1800, function() self:fetchAbout() end, 3)
     s:every("changelog", 1800, function() self:fetchChangelog() end, 5)
     s:every("updates", 3600, function() self:checkUpdates() end, 8)
 end
 
-function App:fetchSupporters()
+-- Текст «Общая информация» (about_v2.txt в ветке обновлений): авторы, благодарности, описание
+function App:fetchAbout()
     if not self.http:available() then return end
-    self.http:get(remote.REPO .. remote.MAIN .. "/supporters.txt", function(ok, data)
-        if ok then
-            local line = remote.parseSupporters(data)
-            if line and line ~= self.remote.supporters then self.remote.supporters = line self.state:touch() end
-        end
+    self.http:get(remote.REPO .. App.UPDATE_BRANCH .. "/about_v2.txt", function(ok, data)
+        local lines = ok and remote.parseAbout(data)
+        if lines then self.remote.about = lines self.state:touch()
+        else self.log:debug("about_v2.txt: " .. tostring(ok and "пустой" or data)) end
     end)
 end
 

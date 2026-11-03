@@ -17,8 +17,15 @@ T.test("remote: сравнение версий", function()
     T.ok(remote.isNewer("2.1", "2.0.9")); T.no(remote.isNewer("2.0.0", "2.0.0"))
 end)
 
-T.test("remote: спонсоры — первая строка", function()
-    T.eq(remote.parseSupporters("a, b\nlater"), "a, b"); T.no(remote.parseSupporters("  \n"))
+T.test("remote: about_v2.txt — текст без комментариев", function()
+    local lines = remote.parseAbout(io.open("about_v2.txt"):read("a"))
+    T.ok(lines and #lines > 5)
+    T.no(lines[1]:match("^#")); T.eq(lines[1], "Автор программы: P1KaChU337")
+    local found = false
+    for _, l in ipairs(lines) do if l:find("Спасибо за поддержку") then found = true end end
+    T.ok(found, "есть благодарности")
+    T.no(remote.parseAbout("# только комментарий\n\n"))
+    T.eq(#remote.parseAbout("a\r\n\r\nb"), 3)
 end)
 
 T.test("http: запрос по шагам, ответ и ошибки", function()

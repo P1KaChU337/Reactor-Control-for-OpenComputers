@@ -1,4 +1,4 @@
--- Окно «Информация»: общая информация, изменения, лицензия. Текст прокручивается колесом мыши
+-- Окно «Информация»: общая информация (about_v2.txt с GitHub, иначе встроенный текст), изменения, лицензия. Текст прокручивается колесом мыши
 -- или нажатием на верхнюю/нижнюю половину текста.
 local unicode = require("unicode")
 local G = require("ui.gfx")
@@ -17,6 +17,12 @@ local INFO = {
         "GitHub проекта: github.com/P1KaChU337/Reactor-Control-for-OpenComputers",
         "",
         "Поддержать проект можно, предварительно связавшись со мной для согласования способа поддержки (на карту, boosty, или иной подарок).",
+    "",
+    "Спасибо за поддержку:",
+    "- DroperToper - за донат 10$",
+    "- boychhhik666 - За реакторы для тестов",
+    "- Fiellyns - За тесты и обратную связь",
+    "- Insonain - За тесты и обратную связь",
         "",
         "Лицензия: MIT License",
         "",
@@ -133,13 +139,16 @@ end
 
 local currentApp
 local function lines()
-    local key = currentApp and currentApp.remote and ((currentApp.remote.changelog and 1 or 0) + (currentApp.remote.changelogV2 and 2 or 0))
-    if tab == 2 and key ~= remoteChangelog then
+    local r = currentApp and currentApp.remote
+    local key = r and tostring(r.changelog) .. tostring(r.changelogV2) .. tostring(r.about)
+    if key ~= remoteChangelog then
         remoteChangelog = key
-        wrappedCache[2] = nil
+        wrappedCache[1], wrappedCache[2] = nil, nil
     end
     if not wrappedCache[tab] then
-        local text = tab == 2 and currentApp and changelogText(currentApp) or TABS[tab].text
+        local text = TABS[tab].text
+        if tab == 2 and currentApp then text = changelogText(currentApp)
+        elseif tab == 1 and r and r.about then text = r.about end
         wrappedCache[tab] = wrapText(text, W - 4)
     end
     return wrappedCache[tab]
