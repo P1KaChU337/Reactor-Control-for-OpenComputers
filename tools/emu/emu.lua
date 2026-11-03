@@ -438,6 +438,19 @@ local function shellParse(...)
     return args, options
 end
 preload.shell = function() return {execute = fakeExec, parse = shellParse, getWorkingDirectory = function() return "/home" end, resolve = function(p) return p end} end
+-- internet (OpenOS): request(url) -> итератор кусков; данные берутся из emu.http[url]
+preload.internet = function()
+    return {request = function(url)
+        local data = emu.http and emu.http[url]
+        if not data then error("404 " .. tostring(url), 0) end
+        local sent = false
+        return function()
+            if sent then return nil end
+            sent = true
+            return data
+        end
+    end}
+end
 preload.term = function() return {clear = function() end, setCursor = function() end, write = function() end, read = function() return "" end, isAvailable = function() return true end} end
 preload.keyboard = function() return {keys = {c = 46}, isControlDown = function() return false end, isKeyDown = function() return false end, isAltDown = function() return false end} end
 preload.process = function() return {info = function() return {data = {signal = function() end}} end} end

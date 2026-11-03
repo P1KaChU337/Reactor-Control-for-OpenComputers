@@ -37,13 +37,14 @@ images/             фоны .pic для тем
 
 Запуск без интерфейса (журнал в терминал): `main.lua --nogui`.
 
-## Установка в игре (тест)
+## Установка в игре
 
+Установка с нуля и обновление — одна и та же команда, установщик сам понимает, что делать:
 ```
-wget -f https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/claude/keen-volta-rnypyl/installer/install_v2.lua /home/install_v2.lua
-install_v2
-/home/reactorcontrol/main.lua
+wget -fq https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/claude/keen-volta-rnypyl/installer/install_v2.lua /home/rc_install.lua && /home/rc_install.lua
 ```
+Обновление уже установленной v2: `/home/reactorcontrol/update.lua` (скачает свежий установщик и запустит его).
+
 Старая версия и её настройки не трогаются, v2 переносит настройки сама.
 
 ## Проверка без игры
