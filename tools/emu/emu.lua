@@ -92,10 +92,40 @@ function unicode.sub(s, i, j)
 end
 function unicode.upper(s) return s:upper() end
 function unicode.lower(s) return s:lower() end
-function unicode.isWide() return false end
-function unicode.charWidth() return 1 end
-function unicode.wlen(s) return unicode.len(s) end
-function unicode.wtrunc(s, n) return unicode.sub(s, 1, n - 1) end
+-- Ширина символов берётся из настоящего шрифта OC (font.hex): 32 hex = 8x16 (1 ячейка), 64 hex = 16x16 (2 ячейки)
+local FONT_URL = "https://raw.githubusercontent.com/MightyPirates/OpenComputers/master-MC1.12/src/main/resources/assets/opencomputers/font.hex"
+local fontPath = EMU_DIR .. "/.cache/font.hex"
+local wide = {}
+do
+    local f = rawOpen(fontPath, "r")
+    if not f then
+        rawExecute("mkdir -p '" .. EMU_DIR .. "/.cache' && curl -sSfL -o '" .. fontPath .. "' " .. FONT_URL)
+        f = rawOpen(fontPath, "r")
+    end
+    if f then
+        for line in f:lines() do
+            local cp, bits = line:match("^(%x+):(%x+)")
+            if cp and #bits == 64 then wide[tonumber(cp, 16)] = true end
+        end
+        f:close()
+    else
+        rawStderr:write("[emu] WARNING: font.hex не найден, ширина всех символов = 1\n")
+    end
+end
+emu.wide = wide
+local function cpWidth(cp) return wide[cp] and 2 or 1 end
+function unicode.isWide(ch) return cpWidth(utf8.codepoint(ch)) > 1 end
+function unicode.charWidth(ch) return cpWidth(utf8.codepoint(ch)) end
+function unicode.wlen(s) local n = 0 for _, cp in utf8.codes(s) do n = n + cpWidth(cp) end return n end
+function unicode.wtrunc(s, n)
+    local w, out = 0, {}
+    for _, cp in utf8.codes(s) do
+        w = w + cpWidth(cp)
+        if w >= n then break end
+        out[#out + 1] = utf8.char(cp)
+    end
+    return table.concat(out)
+end
 preload.unicode = function() return unicode end
 
 -- GPU + экран
@@ -122,12 +152,18 @@ function gpu.getForeground() return gpuState.fg end
 function gpu.getDepth() return 8 end
 function gpu.set(x, y, s, vertical)
     emu.gpuCalls = emu.gpuCalls + 1
+    -- Как в OC: широкий символ занимает 2 колонки, следующая колонка становится пробелом,
+    -- и всё, что идёт дальше в строке, сдвигается вправо
     for _, cp in utf8.codes(s) do
+        local w = cpWidth(cp)
         if x >= 1 and x <= W and y >= 1 and y <= H then
             local i = (y - 1) * W + x
             scr.bg[i], scr.fg[i], scr.ch[i] = gpuState.bg, gpuState.fg, utf8.char(cp)
+            if w > 1 and x + 1 <= W then
+                scr.bg[i + 1], scr.fg[i + 1], scr.ch[i + 1] = gpuState.bg, gpuState.fg, " "
+            end
         end
-        if vertical then y = y + 1 else x = x + 1 end
+        if vertical then y = y + 1 else x = x + w end
     end
     return true
 end
@@ -198,6 +234,7 @@ function component.proxy(a)
     return w
 end
 function component.methods(a) local p = findByAddress(a) local r = {} for k, v in pairs(p) do if type(v) == "function" then r[k] = false end end return r end
+function component.doc(a, m) local p = findByAddress(a) return p and p.__doc and p.__doc[m] or nil end
 function component.type(a) local p = findByAddress(a) return p and p.type end
 setmetatable(component, {__index = function(_, t)
     if components[t] and components[t][1] then return component.proxy(components[t][1].address) end
@@ -362,7 +399,27 @@ local function fakeExec(cmd)
     return true
 end
 os.execute = fakeExec
-preload.shell = function() return {execute = fakeExec, getWorkingDirectory = function() return "/home" end, resolve = function(p) return p end} end
+local function shellParse(...)
+    local args, opts = {}, {}
+    local list = {...}
+    local i = 1
+    while i <= #list do
+        local a = list[i]
+        local long = type(a) == "string" and a:match("^%-%-(.+)$")
+        if long then
+            local k, v = long:match("^([^=]+)=(.*)$")
+            if k then opts[k] = v
+            elseif list[i + 1] and not tostring(list[i + 1]):match("^%-") then opts[long] = list[i + 1] i = i + 1
+            else opts[long] = true end
+        elseif type(a) == "string" and a:match("^%-%a") then
+            for c in a:sub(2):gmatch(".") do opts[c] = true end
+            if #a == 2 and list[i + 1] and not tostring(list[i + 1]):match("^%-") then opts[a:sub(2)] = list[i + 1] i = i + 1 end
+        else args[#args + 1] = a end
+        i = i + 1
+    end
+    return args, opts
+end
+preload.shell = function() return {execute = fakeExec, parse = shellParse, getWorkingDirectory = function() return "/home" end, resolve = function(p) return p end} end
 preload.term = function() return {clear = function() end, setCursor = function() end, write = function() end, read = function() return "" end, isAvailable = function() return true end} end
 preload.keyboard = function() return {keys = {c = 46}, isControlDown = function() return false end, isKeyDown = function() return false end, isAltDown = function() return false end} end
 preload.process = function() return {info = function() return {data = {signal = function() end}} end} end
@@ -387,6 +444,9 @@ end
 os.exit = function() error("EMU_EXIT", 0) end
 local rawDate = os.date
 os.date = function(fmt, t) return rawDate(fmt, t or 1700000000 + math.floor(emu.time)) end
+emu.stdin = {}
+io.read = function() local l = table.remove(emu.stdin, 1) trace("io.read ->", tostring(l)) return l end
+io.write = function(...) for _, v in ipairs({...}) do rawStderr:write(tostring(v)) end end
 io.stderr = setmetatable({write = function(_, ...) trace("stderr:", ...) end}, {})
 
 package.path = REPO .. "/lib/?.lua;" .. REPO .. "/lib/FormatModules/?.lua;" .. EMU_DIR .. "/?.lua;" .. package.path

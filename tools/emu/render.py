@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Рендер дампа экрана эмулятора (или .pic OCIF) в PNG. Брайль рисуется точками 2x4."""
 import sys, re, os
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 _src = open(os.path.join(HERE, '..', '..', 'lib', 'color.lua'), encoding='utf-8').read()
@@ -18,26 +18,54 @@ _qcache = {}
 
 def rgb(c): return (c >> 16 & 255, c >> 8 & 255, c & 255)
 
-FONT = None
-for f in ['/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']:
-    if os.path.exists(f): FONT = ImageFont.truetype(f, 13); break
-FONT = FONT or ImageFont.load_default()
-BITS = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (0, 3), (1, 3)]
+FONT_URL = 'https://raw.githubusercontent.com/MightyPirates/OpenComputers/master-MC1.12/src/main/resources/assets/opencomputers/font.hex'
+FONT_PATH = os.path.join(HERE, '.cache', 'font.hex')
+_font = None
 
-def render(w, h, cells, out, cw=8, ch=16, quant=True):
-    im = Image.new('RGB', (w * cw, h * ch)); dr = ImageDraw.Draw(im)
+def font():
+    """Настоящий шрифт OC: codepoint -> (width_cells, rows). 8x16 или 16x16 пикселей."""
+    global _font
+    if _font is None:
+        if not os.path.exists(FONT_PATH):
+            import urllib.request
+            os.makedirs(os.path.dirname(FONT_PATH), exist_ok=True)
+            urllib.request.urlretrieve(FONT_URL, FONT_PATH)
+        _font = {}
+        with open(FONT_PATH) as f:
+            for line in f:
+                cp, bits = line.strip().split(':')
+                wide = len(bits) == 64
+                step = 4 if wide else 2
+                rows = [int(bits[i:i + step], 16) for i in range(0, len(bits), step)]
+                _font[int(cp, 16)] = (2 if wide else 1, rows)
+    return _font
+
+def render(w, h, cells, out, scale=1, quant=True):
+    cw, ch = 8, 16
+    im = Image.new('RGB', (w * cw, h * ch))
+    px = im.load()
+    fnt = font()
+    # сначала фон всех ячеек, потом глифы (широкий глиф ложится на соседнюю ячейку)
     for (x, y), (bg, fg, s) in cells.items():
-        if quant: bg, fg = quantize(bg), quantize(fg)
+        bg = quantize(bg) if quant else bg
+        c = rgb(bg)
         X, Y = (x - 1) * cw, (y - 1) * ch
-        dr.rectangle([X, Y, X + cw - 1, Y + ch - 1], fill=rgb(bg))
-        o = ord(s) if s else 32
-        if 0x2800 <= o <= 0x28FF:
-            m = o - 0x2800
-            for k, (bx, by) in enumerate(BITS):
-                if m >> k & 1:
-                    dr.rectangle([X + bx * cw // 2, Y + by * ch // 4, X + (bx + 1) * cw // 2 - 1, Y + (by + 1) * ch // 4 - 1], fill=rgb(fg))
-        elif s.strip():
-            dr.text((X, Y), s, fill=rgb(fg), font=FONT)
+        for yy in range(ch):
+            for xx in range(cw):
+                px[X + xx, Y + yy] = c
+    for (x, y), (bg, fg, s) in cells.items():
+        if not s or s == ' ': continue
+        g = fnt.get(ord(s)) or fnt.get(ord('?'))
+        width, rows = g
+        fg = rgb(quantize(fg) if quant else fg)
+        X, Y = (x - 1) * cw, (y - 1) * ch
+        bw = width * 8
+        for yy, row in enumerate(rows):
+            for xx in range(bw):
+                if row >> (bw - 1 - xx) & 1 and X + xx < w * cw:
+                    px[X + xx, Y + yy] = fg
+    if scale != 1:
+        im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
     im.save(out)
 
 def load_dump(path):
