@@ -84,4 +84,4 @@ if buffer then
 end
 if buffer or app.tui then pcall(function() require("term").clear() end) end
 if app.exitReason == "restart" then computer.shutdown(true) end
-if app.exitReason == "update" then require("shell").execute(ROOT .. "/update.lua") end
+if app.exitReason == "update" then require("shell").execute(ROOT .. "/update.lua", nil, "--auto") end

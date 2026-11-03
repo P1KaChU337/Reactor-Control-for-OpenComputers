@@ -6,7 +6,9 @@
 -- Файлы пишутся атомарно: сначала во временный файл, потом замена. Обрыв связи не портит установленную версию.
 --
 --   rc_install            обычный запуск
---   rc_install --yes      без вопросов (для скриптов)
+--   rc_install --yes      без вопросов, в конце просто выйти (для скриптов)
+--   rc_install --auto     без вопросов, в конце перезагрузить компьютер и запустить программу
+--                         (так запускает обновление сама программа)
 --   rc_install --branch=main
 local component = require("component")
 local computer = require("computer")
@@ -21,6 +23,8 @@ local REPO = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-O
 local BASE = REPO .. BRANCH .. "/"
 local DEST = "/home/reactorcontrol/"
 local AUTOSTART_CMD = "/home/reactorcontrol/main.lua"
+local ONCE_PATH = "/home/.rc_once.lua"   -- одноразовый запуск после перезагрузки, если автозапуск выключен
+local quiet = opts.yes or opts.auto
 
 -- Файлы программы (src/ -> /home/reactorcontrol/). Список проверяется тестом tests/test_installer.lua
 local FILES = {
@@ -53,6 +57,7 @@ local FILES = {
     "ui/sprites.lua",
     "ui/textui.lua",
     "ui/theme.lua",
+    "ui/screens/update.lua",
     "ui/ui.lua",
     "update.lua",
 }
@@ -289,7 +294,7 @@ local function main()
     local main = mode == "update" and "Обновить" or "Установить"
     button("go", PX + math.floor(PW / 2) - 20, by, 18, main, C.btn)
     button("cancel", PX + math.floor(PW / 2) + 2, by, 18, "Отмена", C.btnAlt)
-    if not opts.yes then
+    if not quiet then
         while true do
             local id = waitButton({[28] = "go", q = "cancel", [1] = "cancel", [57] = "autostart"})
             if id == "autostart" then autostart = not autostart autostartLine()
@@ -343,19 +348,53 @@ local function main()
     end
 
     log(mode == "update" and "Обновление завершено!" or "Установка завершена!", C.ok)
-    button("run", PX + math.floor(PW / 2) - 29, by, 18, "Запустить", C.btn)
-    button("reboot", PX + math.floor(PW / 2) - 9, by, 18, "Перезагрузить", C.btnAlt)
-    button("exit", PX + math.floor(PW / 2) + 11, by, 18, "Выход", C.btnAlt)
     if opts.yes then return "exit" end
-    return waitButton({[28] = "run", q = "exit", [1] = "exit"})
+    if opts.auto then
+        for n = 3, 1, -1 do
+            fill(PX + 1, by - 1, PW - 2, 3, C.panel)
+            center(by, "Перезагрузка и запуск через " .. n .. "...", C.accent, C.panel, PX, PW)
+            os.sleep(1)
+        end
+        return "reboot"
+    end
+    button("reboot", PX + math.floor(PW / 2) - 24, by, 28, "Перезагрузить и запустить", C.btn)
+    button("exit", PX + math.floor(PW / 2) + 6, by, 18, "Выход", C.btnAlt)
+    return waitButton({[28] = "reboot", q = "exit", [1] = "exit"})
+end
+
+-- Перезагрузка с запуском программы. Если автозапуск выключен — одноразовый запуск:
+-- строка в .shrc запускает скрипт, который убирает себя из .shrc и стартует программу.
+local function rebootAndStart()
+    if not readShrc():find(AUTOSTART_CMD, 1, true) then
+        local f = io.open(ONCE_PATH, "w")
+        if f then
+            f:write([[
+local fs = require("filesystem")
+local f = io.open("/home/.shrc", "r")
+local text = f and f:read("*a") or ""
+if f then f:close() end
+local out = {}
+for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+    if line:match("%S") and not line:find("]] .. ONCE_PATH .. [[", 1, true) then out[#out + 1] = line end
+end
+f = io.open("/home/.shrc", "w")
+if f then f:write(table.concat(out, "\n") .. (#out > 0 and "\n" or "")) f:close() end
+fs.remove("]] .. ONCE_PATH .. [[")
+require("shell").execute("]] .. AUTOSTART_CMD .. [[")
+]])
+            f:close()
+            local sh = readShrc()
+            local g = io.open("/home/.shrc", "a")
+            if g then g:write((sh ~= "" and not sh:match("\n$")) and ("\n" .. ONCE_PATH .. "\n") or (ONCE_PATH .. "\n")) g:close() end
+        end
+    end
+    computer.shutdown(true)
 end
 
 local ok, res = pcall(main)
 restoreScreen()
 if not ok then
     io.stderr:write("Установщик упал: " .. tostring(res) .. "\n")
-elseif res == "run" then
-    shell.execute(AUTOSTART_CMD)
 elseif res == "reboot" then
-    computer.shutdown(true)
+    rebootAndStart()
 end

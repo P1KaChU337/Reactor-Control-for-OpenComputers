@@ -184,16 +184,21 @@ end
 
 function App:checkUpdates()
     if not self.cfg.updateCheck or not self.http:available() then return end
-    self.http:get(remote.REPO .. App.UPDATE_BRANCH .. "/version_v2.txt", function(ok, data)
-        if not ok then self.log:debug("Проверка обновлений: " .. tostring(data)) return end
-        local v = tostring(data):match("^%s*([%w%.%-]+)")
-        if v and remote.isNewer(v, App.VERSION) then
-            if self.remote.latest ~= v then
+    local base = remote.REPO .. App.UPDATE_BRANCH .. "/"
+    -- история v2 нужна и для вкладки «Изменения», и для окна обновления
+    self.http:get(base .. "changelog_v2.lua", function(ok, data)
+        local list = ok and remote.parseChangelog(data)
+        if list then self.remote.changelogV2 = list self.state:touch() end
+        self.http:get(base .. "version_v2.txt", function(ok2, vdata)
+            if not ok2 then self.log:debug("Проверка обновлений: " .. tostring(vdata)) return end
+            local v = tostring(vdata):match("^%s*([%w%.%-]+)")
+            if v and remote.isNewer(v, App.VERSION) and self.remote.latest ~= v then
                 self.remote.latest = v
-                self.log:warn("Доступна новая версия " .. v .. "! Обновить: кнопка в окне «Информация» или /home/reactorcontrol/update.lua")
+                self.remote.notes = remote.notesBetween(self.remote.changelogV2, App.VERSION, v)
+                self.log:warn("Доступна новая версия v" .. v .. "!")
                 self.state:touch()
             end
-        end
+        end)
     end)
 end
 

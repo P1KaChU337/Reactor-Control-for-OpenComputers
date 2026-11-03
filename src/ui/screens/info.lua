@@ -104,7 +104,17 @@ end
 local remoteChangelog
 local function changelogText(app)
     local out = {}
-    for _, l in ipairs(CHANGELOG) do out[#out + 1] = l end
+    local v2 = app.remote and app.remote.changelogV2
+    if v2 then
+        for i = #v2, 1, -1 do
+            local e = v2[i]
+            out[#out + 1] = "Версия " .. e.version .. ":"
+            for _, c in ipairs(e.changes) do out[#out + 1] = "- " .. c end
+            out[#out + 1] = ""
+        end
+    else
+        for _, l in ipairs(CHANGELOG) do out[#out + 1] = l end
+    end
     local list = app.remote and app.remote.changelog
     if list then
         out[#out + 1] = ""
@@ -123,8 +133,9 @@ end
 
 local currentApp
 local function lines()
-    if tab == 2 and currentApp and currentApp.remote and currentApp.remote.changelog ~= remoteChangelog then
-        remoteChangelog = currentApp.remote.changelog
+    local key = currentApp and currentApp.remote and ((currentApp.remote.changelog and 1 or 0) + (currentApp.remote.changelogV2 and 2 or 0))
+    if tab == 2 and key ~= remoteChangelog then
+        remoteChangelog = key
         wrappedCache[2] = nil
     end
     if not wrappedCache[tab] then
@@ -172,9 +183,8 @@ function M.draw(ui)
     G.text(X + 4, Y + H - 1, 0x999999, "P.S. Нажмите вне окна, чтобы выйти. Текст листается колесом или нажатием")
     if latest then
         G.text(X + 3, Y + H - 3, 0x000000, "Доступна новая версия v" .. latest .. "!")
-        ui:button("update", X + W - 30, Y + H - 4, 26, "Обновить до v" .. latest, ui:isPressed("update") and T.purple or T.purpleDark, 0xffffff, function()
-            app.log:warn("Обновление до v" .. latest .. ": реакторы будут остановлены, программа перезапустится")
-            app:requestUpdate()
+        ui:button("update", X + W - 30, Y + H - 4, 26, "Подробнее об обновлении", T.purpleDark, 0xffffff, function()
+            ui:openModal(require("ui.screens.update"))
         end)
     end
 end

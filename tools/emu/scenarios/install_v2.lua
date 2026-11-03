@@ -30,7 +30,7 @@ local function shot(name) emu.dump(OUT .. "/inst_" .. name .. ".txt") end
 emu.at(1, function() shot("01_confirm") end)
 emu.at(2, function() emu.key(13, 28) end)        -- Enter: Установить
 emu.at(4, function() shot("02_done") end)
-emu.at(5, function() emu.key(string.byte("q"), 16) end) -- выход
+emu.at(5, function() emu.key(string.byte("q"), 16) end) -- выход (без перезагрузки)
 emu.endTime = 8
 emu.runVirtual("/home/install_v2.lua")
 local sh = io.open("/home/.shrc", "r"):read("a")
@@ -43,10 +43,20 @@ emu.at(10, function() shot("03_update") end)
 emu.runVirtual("/home/install_v2.lua", "--yes")
 emu.trace("после обновления .shrc: " .. io.open("/home/.shrc", "r"):read("a"):gsub("\n", "\\n"))
 
+-- обновление из программы (--auto) при ВЫКЛЮЧЕННОМ автозапуске: одноразовый запуск после перезагрузки
+local g = io.open("/home/.shrc", "w") g:write("echo hello\n") g:close()
+emu.endTime = 40
+local okAuto = emu.runVirtual("/home/install_v2.lua", "--auto")
+emu.trace("после --auto .shrc: " .. io.open("/home/.shrc", "r"):read("a"):gsub("\n", "\\n"))
+emu.trace("одноразовый скрипт есть: " .. tostring(io.open("/home/.rc_once.lua", "r") ~= nil))
+emu.runVirtual("/home/.rc_once.lua")   -- "перезагрузка": .shrc выполняет одноразовый скрипт
+emu.trace("после запуска .rc_once .shrc: " .. io.open("/home/.shrc", "r"):read("a"):gsub("\n", "\\n")
+    .. ", скрипт удалён: " .. tostring(io.open("/home/.rc_once.lua", "r") == nil))
+
 -- и программа запускается
 for i = 1, 2 do emu.addComponent(mocks.reactor()) end
 emu.addComponent(mocks.me())
 emu.queue = {}
-emu.at(23, function() emu.interrupt() end)
-emu.endTime = 25
+emu.at(43, function() emu.interrupt() end)
+emu.endTime = 45
 emu.runVirtual("/home/reactorcontrol/main.lua", "--nogui")

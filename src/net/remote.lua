@@ -10,7 +10,14 @@ M.MAIN = "main"
 -- changelog.lua в репозитории — таблица данных вида "return { {version=, changes={...}}, ... }"
 function M.parseChangelog(text)
     if type(text) ~= "string" then return nil end
-    text = text:gsub("^\239\187\191", ""):gsub("^%s*return%s+", "")
+    text = text:gsub("^\239\187\191", "")
+    -- комментарии в начале файла (-- ... и --[[ ... ]]) пропускаем
+    while true do
+        local rest = text:match("^%s*%-%-%[%[.-%]%](.*)$") or text:match("^%s*%-%-[^\n]*\n(.*)$")
+        if not rest then break end
+        text = rest
+    end
+    text = text:gsub("^%s*return%s+", "")
     local data = serialize.unserialize(text)
     if type(data) ~= "table" then return nil end
     local out = {}
@@ -37,6 +44,16 @@ local function parseVersion(v)
     for n in tostring(v):gmatch("%d+") do nums[#nums + 1] = tonumber(n) if #nums >= 4 then break end end
     local pre = tostring(v):find("%-") ~= nil
     return nums, pre
+end
+
+-- Записи changelog, которые новее текущей версии (и не новее найденной), сверху самые новые
+function M.notesBetween(list, cur, latest)
+    local out = {}
+    for _, e in ipairs(list or {}) do
+        if M.isNewer(e.version, cur) and not M.isNewer(e.version, latest) then out[#out + 1] = e end
+    end
+    table.sort(out, function(a, b) return M.isNewer(a.version, b.version) end)
+    return out
 end
 
 function M.isNewer(remote, cur)

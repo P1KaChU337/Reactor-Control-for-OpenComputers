@@ -92,6 +92,12 @@ end
 
 function UI:frame(force)
     local now = self:clock()
+    -- найдено обновление: показать окно один раз (если сейчас не открыто другое окно)
+    local latest = self.app.remote and self.app.remote.latest
+    if latest and self.updateShown ~= latest and not self.modal then
+        self.updateShown = latest
+        self:openModal(require("ui.screens.update"))
+    end
     local state = self.app.state
     local need = force or self.dirty or state.version ~= self.drawnVersion or now >= self.nextClock
     for id, untilT in pairs(self.pressed) do
