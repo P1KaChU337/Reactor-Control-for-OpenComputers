@@ -13,7 +13,7 @@ emu.addComponent(mocks.me({fluid = 50000000}))
 emu.queue = {}
 emu.at(3, function() emu.touch(50, 45) end)               -- «Запуск реакторов!»
 emu.at(20.5, function() r.state.supply = false end)        -- пропускаем один долив (на 21 с)
-emu.at(25.5, function() r.state.supply = true end)
+emu.at(22.5, function() r.state.supply = true end)
 emu.at(40, function()
     emu.trace(string.format("через 15 с после сбоя: работает=%s, буфер=%.0f%%%s", tostring(r.state.active),
         r.state.coolant / r.state.maxCoolant * 100, r.state.active and "" or "  <-- остановлен из-за одного пропущенного долива и не запущен снова"))
