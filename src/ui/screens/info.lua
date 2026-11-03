@@ -12,7 +12,9 @@ local TEXT_H = 29
 local INFO = {
         "Автор программы: P1KaChU337",
         "",
-        "Контакты: vk.com/p1kachu337, Discord: p1kachu337, Telegram: @sh1zurz",
+        "Сайт автора (основной способ связи): www.pzapps.uz",
+    "",
+    "Другие контакты: vk.com/p1kachu337, Discord: p1kachu337, Telegram: @sh1zurz",
         "",
         "GitHub проекта: github.com/P1KaChU337/Reactor-Control-for-OpenComputers",
         "",
