@@ -85,7 +85,7 @@ local function drawWidget(ui, slot, r)
         local maxFuel = rods.maxFuel or 10000
         row(string.format("Топливо: %d шт, %d-%d%%", rods.count,
             math.floor(rods.min / maxFuel * 100), math.floor(rods.max / maxFuel * 100)))
-        local first, last = r.burn:remaining(now)
+        local first, last = r.burn:remaining(now, r.running, r.stoppedAt)
         if first then
             row("Распад: " .. fmt.hms(first) .. " / " .. fmt.hms(last))
         else

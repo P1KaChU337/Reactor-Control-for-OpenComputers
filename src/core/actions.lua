@@ -35,6 +35,7 @@ local function doStop(self, r)
     local ok, err = reactorHw.deactivate(proxy)
     if ok then
         r.running = false
+        r.stoppedAt = self.app.clock()
         self.app.state:touch()
         return true
     end
@@ -155,6 +156,7 @@ function Actions:observeRunning(r, observed)
         log:info("Реактор #" .. r.slot .. " запущен не программой")
     else
         r.running = false
+        r.stoppedAt = self.app.clock()
         if not protection.hasFaults(r) then
             r.desired = false
             r.halted = false

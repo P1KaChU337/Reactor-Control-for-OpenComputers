@@ -57,3 +57,17 @@ T.test("burn: оценка между замерами", function()
     local first, last = b:remaining(40)
     T.near(first, (940 - 20) / 2); T.near(last, (1940 - 20) / 2)
 end)
+
+T.test("burn: после остановки отсчёт замирает (баг: при аварийном отключении распад шёл дальше)", function()
+    local b = rate.burn(600)
+    b:add(0, {min = 1000, max = 2000, sum = 30000, count = 20}, true)
+    b:add(30, {min = 940, max = 1940, sum = 28800, count = 20}, true) -- 2 ед./с, последний замер — реактор работал
+    -- остановлен на 35-й секунде, смотрим на 50-й и на 100-й: значения одинаковые
+    local f50, l50 = b:remaining(50, false, 35)
+    local f100, l100 = b:remaining(100, false, 35)
+    T.near(f50, (940 - 10) / 2); T.near(l50, (1940 - 10) / 2)
+    T.eq(f100, f50); T.eq(l100, l50)
+    -- а пока работает — идёт
+    local fr = b:remaining(50, true)
+    T.near(fr, (940 - 40) / 2)
+end)

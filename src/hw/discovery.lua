@@ -73,6 +73,7 @@ function M.scan(component, state, cfg, log, proxies)
             -- был, но пропал: держим номер, ставим аварию
             r.online = false
             r.running = false
+            r.stoppedAt = state.clock()
             r.faults.offline = {since = state.clock(), text = "Нет связи"}
             proxies.reactors[s] = nil
             log:warn("Реактор #" .. s .. " пропал из сети")

@@ -90,12 +90,16 @@ function Burn:rate()
 end
 
 -- Оценка на момент now (между редкими замерами топливо "догорает" по измеренной скорости).
+-- running/stoppedAt — ТЕКУЩЕЕ состояние реактора: после остановки отсчёт замирает на моменте остановки,
+-- даже если последний замер стержней был сделан, пока реактор ещё работал.
 -- -> secondsFirst (до пустого первого стержня), secondsLast (до пустого последнего) или nil
-function Burn:remaining(now)
+function Burn:remaining(now, running, stoppedAt)
     local r = self:rate()
     local last = self.last
     if not r or not last or not last.sample or last.sample.count == 0 then return nil end
-    local spent = last.running and r * math.max(0, now - last.t) or 0
+    local untilT = now
+    if running == false then untilT = math.max(last.t, math.min(now, stoppedAt or last.t)) end
+    local spent = last.running and r * math.max(0, untilT - last.t) or 0
     local first = math.max(0, last.sample.min - spent) / r
     local lastRod = math.max(0, last.sample.max - spent) / r
     return first, lastRod
