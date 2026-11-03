@@ -7,7 +7,15 @@ local function scriptDir()
     return path and path:match("^(.*)/[^/]*$") or "/home/reactorcontrol"
 end
 local ROOT = scriptDir()
-package.path = ROOT .. "/?.lua;" .. package.path
+if not package.path:find(ROOT .. "/?.lua", 1, true) then package.path = ROOT .. "/?.lua;" .. package.path end
+
+-- OpenOS держит модули из require в памяти до перезагрузки. Выгружаем свои, чтобы после обновления
+-- файлов (или повторного запуска) работала новая версия, а не старая из памяти.
+for name in pairs(package.loaded) do
+    if name:match("^core%.") or name:match("^hw%.") or name:match("^logic%.") or name:match("^ui%.") then
+        package.loaded[name] = nil
+    end
+end
 
 local args = {...}
 local nogui = false
