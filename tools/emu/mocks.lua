@@ -29,38 +29,50 @@ local REACTOR_DOC = {
 }
 
 -- Реактор HiTech (тип компонента "htc_reactors_nuclear_reactor").
--- Пока реактор работает: буфер убывает на consume/с (если не пополняется), топливо стержней убывает на fuelRate/с.
--- ВНИМАНИЕ: скорость топлива и поведение температуры пока не измерены (ждём probe --watch на работающем реакторе).
+-- Динамика снята probe --watch=120 с работающего реактора 6 уровня (20 MOX):
+--   * буфер убывает на drain = ~96768 mB каждую секунду (это ~100 x getFluidCoolantConsume),
+--     а ME доливает 3 x drain раз в 3 секунды: буфер ходит 91% -> 82% -> 73% -> 91%;
+--   * топливо каждого стержня убывает в среднем на 2.95 ед./с (шагами по 2 и 4);
+--   * температура всегда 9998 из 9999 (у калифорниевого реактора 0 из 0), генерация постоянная.
+-- state.supply = false имитирует перебой подачи хладагента из ME.
 function M.reactor(opts)
     opts = opts or {}
+    local consume = opts.consume or 967
     local s = {
         active = opts.active or false,
         fluid = opts.fluid ~= false,
-        temp = opts.temp or 9998,          -- на сервере 9998 и у работающих, и у остановленных (у одного реактора 0)
+        temp = opts.temp or 9998,
         maxTemp = opts.maxTemp or 9999,
         gen = opts.gen or 7793856,
-        coolant = opts.coolant or 983200,
         maxCoolant = opts.maxCoolant or 1080000,
-        consume = opts.consume or 967,      -- номинальный расход, отдаётся и когда реактор стоит
-        refill = opts.refill or 967,        -- сколько в секунду подливает ME (0 = не подливает)
-        fuelRate = opts.fuelRate or 1,
+        consume = consume,                      -- номинальный, отдаётся и когда реактор стоит
+        drain = opts.drain or consume * 100.07, -- реальная убыль буфера в секунду
+        refillPeriod = opts.refillPeriod or 3,
+        supply = opts.supply ~= false,
+        fuelRate = opts.fuelRate or 2.95,
         level = opts.level or 6,
         rods = {},
-        lastT = 0,
+        lastSec = nil,
     }
+    s.coolant = opts.coolant or math.floor(s.maxCoolant * 0.91)
     for _, slot in ipairs(opts.rodSlots or M.DEFAULT_ROD_SLOTS) do
-        s.rods[slot] = {fuel = opts.rodFuel or 7200, maxFuel = 10000, item = "htc_reactors:sixteen_mox_fuel_rod"}
+        s.rods[slot] = {fuel = opts.rodFuel or 7200, maxFuel = opts.maxFuel or 10000, item = "htc_reactors:sixteen_mox_fuel_rod"}
     end
+    -- реактор живёт целыми игровыми секундами
     local function tick()
-        local t = now()
-        local dt = t - s.lastT
-        s.lastT = t
-        if dt <= 0 then return end
-        if s.active then
-            if s.fluid then
-                s.coolant = math.max(0, math.min(s.maxCoolant, s.coolant + (s.refill - s.consume) * dt))
+        local sec = math.floor(now())
+        if s.lastSec == nil then s.lastSec = sec return end
+        while s.lastSec < sec do
+            s.lastSec = s.lastSec + 1
+            if s.active then
+                if s.fluid then
+                    s.coolant = s.coolant - s.drain
+                    if s.supply and s.lastSec % s.refillPeriod == 0 then s.coolant = s.coolant + s.drain * s.refillPeriod end
+                    s.coolant = math.max(0, math.min(s.maxCoolant, s.coolant))
+                    if s.coolant <= 0 then s.active = false s.meltdown = true end
+                end
+                for _, r in pairs(s.rods) do r.fuel = math.max(0, r.fuel - s.fuelRate) end
             end
-            for _, r in pairs(s.rods) do r.fuel = math.max(0, r.fuel - s.fuelRate * dt) end
         end
     end
     local p = {type = "htc_reactors_nuclear_reactor", address = addr("reactor"), state = s, __doc = REACTOR_DOC}
@@ -71,7 +83,7 @@ function M.reactor(opts)
     function p.setActiveCooling(v) s.fluid = v and true or false return true end
     function p.isFuelFilterActive() return true end
     function p.getReactorLevel() return s.level end
-    function p.getTemperature() tick() return s.temp end
+    function p.getTemperature() return s.temp end
     function p.getMaxTemperature() return s.maxTemp end
     function p.getEnergyGeneration() tick() return s.active and s.gen or 0 end
     function p.getFluidCoolant() tick() return math.floor(s.coolant) end
