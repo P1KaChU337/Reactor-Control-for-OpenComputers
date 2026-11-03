@@ -31,7 +31,7 @@ end
 local function clearFault(r, code, events)
     if r.faults[code] then
         r.faults[code] = nil
-        events[#events + 1] = {level = "info", slot = r.slot, text = "Реактор #" .. r.slot .. ": авария снята (" .. M.TEXT[code] .. ")"}
+        events[#events + 1] = {level = "info", color = "ok", slot = r.slot, text = "Реактор #" .. r.slot .. ": авария снята (" .. M.TEXT[code] .. ")"}
         return true
     end
 end
@@ -130,7 +130,6 @@ function M.evaluate(state, cfg, now)
                 else
                     r.restarts[#r.restarts + 1] = now
                     commands[#commands + 1] = {op = "start", slot = r.slot, reason = "auto"}
-                    events[#events + 1] = {level = "info", slot = r.slot, text = "Реактор #" .. r.slot .. ": автозапуск"}
                 end
             end
         end

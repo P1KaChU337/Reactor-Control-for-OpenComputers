@@ -117,8 +117,14 @@ function UI:touch(x, y, button, player)
     for i = #self.hits, 1, -1 do
         local h = self.hits[i]
         if x >= h.x1 and x <= h.x2 and y >= h.y1 and y <= h.y2 then
-            if h.id then self.pressed[h.id] = self:clock() + UI.PRESS_TIME end
+            -- сначала показать нажатие (действие может занять несколько тиков: каждый вызов реактора = тик),
+            -- потом выполнить, и только после этого отсчитывать время "отжатия"
+            if h.id then
+                self.pressed[h.id] = math.huge
+                self:frame(true)
+            end
             if h.fn then h.fn(x, y, player) end
+            if h.id then self.pressed[h.id] = self:clock() + UI.PRESS_TIME end
             self:invalidate()
             return true
         end

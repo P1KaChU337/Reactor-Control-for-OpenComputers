@@ -170,7 +170,7 @@ local function drawConsole(ui, flux)
         if e.level ~= "debug" or ui.app.cfg.debugLog then
             local text = e.text .. (e.count > 1 and ("(x" .. e.count .. ")") or "")
             local wrapped = wrap(text, M.CONSOLE_W)
-            local color = e.color or th[LEVEL_COLOR[e.level] or "text"]
+            local color = type(e.color) == "string" and th[e.color] or e.color or th[LEVEL_COLOR[e.level] or "text"]
             for j = #wrapped, 1, -1 do
                 table.insert(lines, 1, {text = wrapped[j], color = color})
             end
@@ -180,7 +180,7 @@ local function drawConsole(ui, flux)
     while #lines > height do table.remove(lines, 1) end
     -- старые строки тускнеют, как в v1.1.3
     for i, l in ipairs(lines) do
-        local fade = (#lines - i) / math.max(height, 1) * 0.7
+        local fade = (#lines - i) / math.max(height, 1) * 0.45
         G.text(124, 4 + i, G.lerp(l.color, th.bg, fade), l.text)
     end
 end

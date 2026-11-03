@@ -27,6 +27,7 @@ local function shot(name) emu.dump(OUT .. "/v2_" .. name .. ".txt") end
 emu.at(3, function() shot("01_idle") end)
 emu.at(4, function() emu.touch(50, 45) end)                    -- «Запуск реакторов!»
 emu.at(4.1, function() shot("02_pressed") end)
+emu.at(6, function() emu.touch(50, 45) end)                    -- повторно: «уже запущены»
 emu.at(75, function() shot("03_running") end)
 emu.at(80.5, function() reactors[2].state.supply = false end) -- перебой подачи у №2
 emu.at(100, function() shot("04_buffer_fault") end)

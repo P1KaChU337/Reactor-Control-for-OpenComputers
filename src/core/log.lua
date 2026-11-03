@@ -56,6 +56,9 @@ function Log:debug(t, o) return self:write("debug", t, o) end
 function Log:info(t, o) return self:write("info", t, o) end
 function Log:warn(t, o) return self:write("warn", t, o) end
 function Log:error(t, o) return self:write("error", t, o) end
+-- Цветные сообщения уровня info: "ok" — зелёное (успех), "title" — голубое (заголовки)
+function Log:ok(t) return self:write("info", t, {color = "ok"}) end
+function Log:title(t) return self:write("info", t, {color = "title", noStack = true}) end
 
 function Log:tick()
     if #self.pending > 0 and self.clock() - self.lastFlush >= self.flushInterval then self:flush() end

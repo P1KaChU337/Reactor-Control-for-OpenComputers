@@ -40,7 +40,7 @@ function M.scan(component, state, cfg, log, proxies)
                 slots[addr] = free
                 used[free] = addr
                 changed = true
-                log:info("Новый реактор -> #" .. free)
+                log:info("Найден новый реактор, номер #" .. free)
             else
                 if not proxies.overflowWarned then
                     log:warn("Реакторов больше " .. max .. ", лишние не используются")
@@ -62,7 +62,7 @@ function M.scan(component, state, cfg, log, proxies)
             if not r.online then
                 r.online = true
                 r.faults.offline = nil
-                log:info("Реактор #" .. s .. " снова на связи")
+                log:ok("Реактор #" .. s .. " снова на связи")
                 changed = true
             end
             if not proxies.reactors[s] or proxies.reactors[s].address ~= addr then
@@ -93,7 +93,7 @@ function M.scan(component, state, cfg, log, proxies)
     if meAddr ~= (proxies.me and proxies.me.address) then
         proxies.me = meAddr and component.proxy(meAddr) or nil
         state.me.present = meAddr ~= nil
-        log:info(meAddr and "МЭ-сеть подключена" or "МЭ-сеть не найдена")
+        if meAddr then log:ok("МЭ-сеть подключена") else log:warn("МЭ-сеть не найдена!") end
         changed = true
     end
 

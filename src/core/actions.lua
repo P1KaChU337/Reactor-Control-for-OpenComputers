@@ -42,37 +42,52 @@ local function doStop(self, r)
     return false
 end
 
+local function kindName(r)
+    return r.kind == "fluid" and "жидкостный" or r.kind == "air" and "воздушный" or "?"
+end
+Actions.kindName = kindName
+
 -- Запуск по просьбе пользователя (slot = nil: все)
 function Actions:start(slot, who)
     local state, log, cfg = self.app.state, self.app.log, self.app.cfg
     local list = targets(state, slot)
-    if #list == 0 then log:warn(slot and ("Реактора #" .. slot .. " нет") or "Нет ни одного реактора") return end
-    local started, waiting = 0, 0
+    if #list == 0 then log:warn(slot and ("Реактора #" .. slot .. " нет") or "Не подключено ни одного реактора!") return end
+    if not slot then log:info("Запуск реакторов...") end
+    local started, already, waiting, offline = 0, 0, 0, 0
     for _, r in ipairs(list) do
-        if r.online then
+        if not r.online then
+            offline = offline + 1
+            log:warn("Реактор #" .. r.slot .. ": нет связи, запуск невозможен")
+        else
             r.desired = true
             -- ручной запуск сбрасывает "частые аварии" и аварию буфера: пользователь берёт решение на себя,
             -- защита всё равно остановит реактор, если буфер начнёт пустеть
             r.faults.unstable = nil
             r.faults.buffer_low = nil
             r.restarts = {}
-            if protection.hasFaults(r) then
+            if r.running then
+                already = already + 1
+                if slot then log:warn("Реактор #" .. r.slot .. " уже запущен") end
+            elseif protection.hasFaults(r) then
                 local _, text = protection.firstFault(r)
                 r.halted = true
                 waiting = waiting + 1
-                if slot then
-                    log:warn("Реактор #" .. r.slot .. " не запущен: " .. text
-                        .. (cfg.autoRestart and ". Запустится сам, когда авария пройдёт" or ""))
-                end
-            elseif not r.running then
-                if doStart(self, r) then started = started + 1 end
+                log:warn("Реактор #" .. r.slot .. " не запущен: " .. text
+                    .. (cfg.autoRestart and ". Запустится сам, когда авария пройдёт" or ""))
+            elseif doStart(self, r) then
+                started = started + 1
+                log:ok("Реактор #" .. r.slot .. " (" .. kindName(r) .. ") запущен!")
             end
         end
     end
-    if slot then
-        if started > 0 then log:info("Реактор #" .. slot .. " запущен" .. (who and (" (" .. who .. ")") or "")) end
-    else
-        log:info("Запущено реакторов: " .. started .. (waiting > 0 and (", ждут окончания аварии: " .. waiting) or ""))
+    if not slot then
+        if started == 0 and waiting == 0 and offline == 0 then
+            log:warn("Все реакторы уже запущены!")
+        elseif started > 0 and started + already == #list then
+            log:ok("Реакторы запущены! (" .. (started + already) .. "/" .. #list .. ")")
+        elseif started > 0 then
+            log:warn("Запущено " .. started .. ", работает " .. (started + already) .. " из " .. #list)
+        end
     end
     state:touch()
 end
@@ -80,19 +95,28 @@ end
 function Actions:stop(slot, who)
     local state, log = self.app.state, self.app.log
     local list = targets(state, slot)
-    if #list == 0 then log:warn(slot and ("Реактора #" .. slot .. " нет") or "Нет ни одного реактора") return end
-    local stopped = 0
+    if #list == 0 then log:warn(slot and ("Реактора #" .. slot .. " нет") or "Не подключено ни одного реактора!") return end
+    if not slot then log:info("Отключение реакторов...") end
+    local stopped, cancelled = 0, 0
     for _, r in ipairs(list) do
+        local wasWaiting = r.halted and r.desired and not r.running
         r.desired = false
         r.halted = false
         if r.online and r.running then
-            if doStop(self, r) then stopped = stopped + 1 end
+            if doStop(self, r) then
+                stopped = stopped + 1
+                log:ok("Реактор #" .. r.slot .. " (" .. kindName(r) .. ") отключен!")
+            end
+        elseif wasWaiting then
+            cancelled = cancelled + 1
+            log:info("Реактор #" .. r.slot .. ": автозапуск отменён")
+        elseif slot then
+            log:warn("Реактор #" .. r.slot .. " уже отключен")
         end
     end
-    if slot then
-        log:info("Реактор #" .. slot .. " остановлен" .. (who and (" (" .. who .. ")") or ""))
-    else
-        log:info("Остановлено реакторов: " .. stopped)
+    if not slot then
+        if stopped == 0 and cancelled == 0 then log:warn("Реакторы уже отключены!")
+        else log:ok("Реакторы отключены!") end
     end
     state:touch()
 end
@@ -111,8 +135,10 @@ function Actions:apply(commands)
             if c.op == "stop" and r.running then
                 doStop(self, r)
                 self.app.log:warn("Реактор #" .. r.slot .. " остановлен защитой: " .. tostring(protection.TEXT[c.reason] or c.reason))
+            elseif c.op == "start" and not r.running and c.reason == "auto" then
+                if doStart(self, r) then self.app.log:ok("Реактор #" .. r.slot .. " (" .. kindName(r) .. ") запущен автоматически") end
             elseif c.op == "start" and not r.running then
-                doStart(self, r)
+                if doStart(self, r) then self.app.log:ok("Реактор #" .. r.slot .. " запущен") end
             end
         end
     end
@@ -171,7 +197,7 @@ function Actions:syncUsers()
             local ok, err = computer.addUser(n)
             if ok then
                 cfg.usersApplied[#cfg.usersApplied + 1] = n
-                log:info("Добавлен пользователь: " .. n)
+                log:ok("Добавлен пользователь: " .. n)
                 changed = true
             else
                 log:warn("Не удалось добавить " .. n .. ": " .. tostring(err))

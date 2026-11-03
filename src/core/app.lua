@@ -64,7 +64,7 @@ function App:on(name, fn) self.handlers[name] = fn end
 -- Один шаг защиты: оценить и выполнить команды
 function App:protect()
     local cmds, events = protection.evaluate(self.state, self.cfg, self.clock())
-    for _, e in ipairs(events) do self.log:write(e.level, e.text) end
+    for _, e in ipairs(events) do self.log:write(e.level, e.text, e.color and {color = e.color}) end
     if #cmds > 0 then self.actions:apply(cmds) end
     if #events > 0 or #cmds > 0 then self.state:touch() end
 end
@@ -147,17 +147,22 @@ end
 
 function App:init()
     local log = self.log
-    log:info("Reactor Control v" .. App.VERSION)
+    log:title("------Reactor Control v" .. App.VERSION_SHORT .. "------")
+    log:title("Автор приложения: P1KaChU337")
+    log:title("Версия приложения: " .. App.VERSION)
     for _, w in ipairs(self.cfgInfo.warnings) do log:warn(w) end
     if self.cfgInfo.source == "legacy" then
-        log:info("Настройки перенесены из старой версии")
+        log:ok("Настройки перенесены из старой версии")
         self.saveConfig()
     end
     log:setFileLevel(self.cfg.debugLog and "debug" or "info")
     self:scan()
-    log:info("Реакторов: " .. self.state:count() .. ", МЭ: " .. (self.state.me.present and "да" or "нет")
-        .. ", Flux: " .. (self.state.flux.present and "да" or "нет"))
-
+    local st = self.state
+    log:title("Реакторов найдено: " .. st:count())
+    log:title("МЭ-сеть: " .. (st.me.present and "Подключена" or "Не подключена"))
+    log:title("Flux-сеть: " .. (st.flux.present and "Подключена" or "Не подключена"))
+    log:title("ChatBox: " .. (st.chat.present and "Подключен" or "Не подключен"))
+    log:title("----------------------------------")
     -- Как в старой версии: при старте программы всё останавливается, запуск — кнопкой
     if self.cfg.onStart ~= "adopt" then
         self:forEachOnline(function(r, p)
@@ -201,7 +206,7 @@ function App:requestExit() self.exitReason = "exit" self.running = false end
 function App:requestRestart() self.exitReason = "restart" self.running = false end
 
 function App:shutdown()
-    self.log:info("Завершение работы, реакторы останавливаются")
+    self.log:warn("Завершаю работу программы...")
     self.actions:stop(nil, "выход")
     self.log:flush()
 end
