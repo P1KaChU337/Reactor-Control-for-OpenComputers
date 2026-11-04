@@ -26,7 +26,7 @@ emu.http = {
 local fs = require("filesystem")
 fs.makeDirectory("/home/reactorcontrol/data")
 local f = io.open("/home/reactorcontrol/data/config.cfg", "w")
-f:write('{firstStart = false, users = {"P1KaChU337", "Mega_Killer_002"}, usersApplied = {"P1KaChU337", "Mega_Killer_002"}, threshold = 500000}')
+f:write('{firstStart = false, users = {"P1KaChU337", "oGoOgO"}, usersApplied = {"P1KaChU337", "oGoOgO"}, threshold = 500000}')
 f:close()
 
 -- 6 реакторов: 5 жидкостных (MOX), 1 воздушный; у стержней разный остаток топлива
