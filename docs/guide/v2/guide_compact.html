@@ -1,0 +1,165 @@
+<p><strong>Reactor Control v2.0 by P1KaChU337</strong></p>
+<p>Представляю программу <strong>мониторинга, контроля и защиты реакторного комплекса</strong> для игроков сервера <strong><span style="color: #e67e23;">McSkill HiTech 1.12.2</span></strong> на основе мода <strong><span style="color: #169179;">OpenComputers</span></strong>.</p>
+<p>Версия <strong>2.0</strong> написана с нуля: защита реакторов стала <span style="color: #169179;"><strong>точнее</strong></span> и работает <span style="color: #169179;"><strong>всегда</strong></span>, интерфейс быстрее и информативнее, а установка и обновление&nbsp;<strong>в одну команду</strong>.</p>
+<p>В этом гайде подробно описано, <strong>как собрать и настроить компьютер</strong>, <strong>как установить программу</strong> и <strong>как она защищает ваши реакторы</strong>.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/main.png" alt="main.png"></p>
+<h2><span style="color: #236fa1;">Сборка и настройка компьютера</span></h2>
+<p>Для корректной работы программы необходимо собрать компьютер со следующими компонентами:</p>
+<ul>
+<li>Монитор <strong>3 уровня</strong></li>
+<li>Серверная стойка (<span style="color: #e67e23;"><strong>не системный блок</strong></span>)</li>
+<li>Сервер <strong>3 уровня</strong></li>
+<li>Клавиатура</li>
+<li>Компонентные шины <strong>2 шт.</strong></li>
+<li>ОЗУ <strong>3.5 / 4 шт.</strong></li>
+<li>Видеокарта <strong>3 уровня</strong></li>
+<li>Интернет-карта</li>
+<li>EEPROM с <strong>Lua BIOS</strong></li>
+<li>Жёсткий диск <strong>3 уровня</strong></li>
+<li>Процессор <strong>3 уровня</strong></li>
+<li>Дисковод с дискетой <strong>OpenOS</strong></li>
+<li><span style="color: #34495e;"><em>По желанию:</em></span> <strong>чат-бокс</strong> — для управления реакторами командами из чата</li>
+</ul>
+<p>Все компоненты соединяются в стойке. Пример сборки:</p>
+<p><img style="width: 549px; height: 315px;" src="https://img.mcskill.net/guides/b1/b1c6d723cc85db0bdc5c35424b72a1d574ffdac9647adc0d1bea120c4ce3f0d5.png" alt="Сервер"><img style="width: 552px; height: 309px;" src="https://img.mcskill.net/guides/06/06a0e9dd2cecfa3cf559ba90d2b33cc4a0b15c2376e5fe8439cc1c1c60e1273e.png" alt="Серверная стойка"></p>
+<p>Установите мониторы (их можно покрасить красителем) в удобном месте, разместите клавиатуру и серверную стойку рядом, затем подключите всё кабелями:</p>
+<p><img style="max-width: 100%;" src="https://img.mcskill.net/guides/3f/3f8067cefc767ab7ac8a76d239b47c14ce51a678438685277ca38d0be50992dc.png" alt="Подключение"></p>
+<h2><span style="color: #236fa1;">Установка OpenOS и программы</span></h2>
+<h3>1. Установка OpenOS</h3>
+<ul>
+<li>Запустите компьютер и введите <strong>install</strong></li>
+<li>Подтвердите установку нажатием <strong>Enter 2 раза</strong></li>
+<li>Дождитесь перезапуска компьютера</li>
+</ul>
+<h3>2. Установка Reactor Control</h3>
+<p>Введите команду:</p>
+<pre><code>wget -fq https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/installer/install_v2.lua /home/rc_install.lua &amp;&amp; /home/rc_install.lua</code></pre>
+<p>Откроется <strong>установщик</strong>. Он проверит компьютер (интернет-карта, видеокарта и монитор, память) и покажет, что будет сделано. Галочка <strong>«Запускать при включении компьютера»</strong> включена по умолчанию — программа будет стартовать сама после перезагрузки сервера. Нажмите <strong><span style="color: #236fa1;">«Установить»</span></strong>.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/installer_confirm.png" alt="installer_confirm.png"></p>
+<p>После загрузки нажмите <strong><span style="color: #236fa1;">«Перезагрузить и запустить»</span></strong>.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/installer_done.png" alt="installer_done.png"></p>
+<h3>3. Первый запуск</h3>
+<p>При первом запуске откроется окно <strong>настроек</strong>:</p>
+<ul>
+<li><span style="color: #e03e2d;"><strong>Обязательно добавьте свой никнейм</strong></span> (и ники тех, кому нужен доступ) в <strong>белый список</strong> — кроме этих игроков никто не сможет пользоваться компьютером и командами в чате</li>
+<li>Укажите <strong>порог хладагента в МЭ</strong> (в mB) — ниже него жидкостные реакторы будут остановлены</li>
+<li>Выберите тему (тёмная / светлая), включите или выключите проверку обновлений и автозапуск реакторов</li>
+<li>Нажмите <strong>«Сохранить и выйти»</strong></li>
+</ul>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/settings.png" alt="settings.png"></p>
+<p>Настройки можно поменять в любой момент фиолетовой кнопкой <strong>с гаечным ключом</strong> в левом нижнем углу. Редактировать файлы руками больше не нужно.</p>
+<blockquote><p><strong>Уже стоит версия 1.x?</strong> Ничего делать не нужно: при включённой проверке обновлений программа <span style="color: #169179;"><strong>сама предложит обновиться до 2.0</strong></span>. Порог, список игроков и тема перенесутся автоматически. Можно и просто выполнить команду установки выше.</p></blockquote>
+<h3>Обновления</h3>
+<p>Программа <strong>сама проверяет обновления раз в час</strong>. Если вышла новая версия, откроется окно <strong>«Доступно обновление»</strong> со списком изменений. Нажмите <strong><span style="color: #236fa1;">«Обновить»</span></strong> — реакторы будут остановлены, программа обновится, компьютер перезагрузится и всё запустится заново. Настройки сохраняются.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/update.png" alt="update.png"></p>
+<p>Обновить вручную: <code>/home/reactorcontrol/update.lua</code></p>
+<h2><span style="color: #236fa1;">Подключение реакторов и сетей</span></h2>
+<p>Программа поддерживает работу с:</p>
+<ul>
+<li><strong>Реакторами</strong> (через адаптер) — <strong>до 6 реакторов</strong></li>
+<li><strong>МЭ-сетью</strong> (через адаптер к <strong>контроллеру</strong> или <strong>МЭ-интерфейсу</strong>) — для контроля запаса хладагента</li>
+<li><strong>Flux-сетью</strong> (через адаптер к <strong>контроллеру</strong>, <span style="color: #e67e23;">не к разъёмам или хранилищу</span>) — для отображения входа и выхода энергии</li>
+</ul>
+<p>Пример подключения адаптера к реактору:</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/guide/reaktor.png" alt="reaktor.png"></p>
+<p>Адаптеры можно подключить и с помощью поставщиков:</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/guide/postavchik.png" alt="postavchik.png"></p>
+<p>Реакторы и сети можно подключать и отключать <strong>во время работы программы</strong> — она найдёт их сама. Каждый реактор получает <span style="color: #169179;"><strong>постоянный номер</strong></span>, который не меняется после перезагрузки.</p>
+<h2><span style="color: #236fa1;">Защита реакторов</span></h2>
+<h3>Буфер хладагента реактора</h3>
+<p>У каждого жидкостного реактора есть внутренний буфер хладагента. Программа проверяет его <span style="color: #236fa1;"><strong>каждую секунду</strong></span> и считает <strong>в секундах работы</strong>: на сколько секунд реактору хватит хладагента при его реальном расходе.</p>
+<ul>
+<li>Если буфера осталось <span style="color: #e03e2d;"><strong>меньше чем на 5 секунд</strong></span>, реактор останавливается — заранее, чтобы на безопасный перезапуск хладагента хватило</li>
+<li>Кратковременный перебой подачи (один пропущенный долив) реактор <span style="color: #169179;"><strong>не останавливает</strong></span></li>
+</ul>
+<p>Если буфер опустел, значит <strong>хладагент не доходит из МЭ до реактора</strong> — нужно проверить подключение. Такой реактор <span style="color: #e67e23;"><strong>не запускается сам</strong></span>, его нужно запустить вручную кнопкой <strong>«Включить»</strong> на виджете.</p>
+<blockquote><p><span style="color: #e03e2d;"><strong>Важно!</strong></span> Запуск реактора с пустым буфером может закончиться <strong>взрывом</strong>. Поэтому после <strong>3 ручных запусков</strong> при пустом буфере реактор <strong>блокируется</strong> (кнопка «Заблокирован»). Проверьте подачу хладагента и запустите реактор <strong>через интерфейс самого реактора</strong> — блокировка снимется. Также она снимается, когда буфер заполнится.</p></blockquote>
+<h3>Хладагент в МЭ-сети</h3>
+<p>Программа следит за запасом хладагента в МЭ: обновление <span style="color: #236fa1;"><strong>раз в минуту</strong></span>, кнопка <strong>«Пр.Обновить МЭ»</strong> — сразу.</p>
+<ul>
+<li>Если хладагента <span style="color: #e67e23;"><strong>меньше порога</strong></span> или <span style="color: #e67e23;"><strong>МЭ-сеть недоступна</strong></span> (погасла, отключилась), все жидкостные реакторы останавливаются, а их виджеты переходят в <strong>аварийный режим</strong> — жёлтые, с причиной</li>
+<li>Когда хладагента снова достаточно, реакторы <span style="color: #169179;"><strong>запускаются автоматически</strong></span>. Пока реактор ждёт автозапуска, на виджете кнопка <strong>«Отменить»</strong> — если запускать его не нужно</li>
+</ul>
+<p><span style="color: #236fa1;"><strong>Воздушные реакторы</strong></span> программа при проблемах с жидкостью <strong>не трогает</strong>.</p>
+<p>Аварийные виджеты: ждёт хладагент в МЭ (<strong>«Отменить»</strong>), пустой буфер — ждёт ручного запуска (<strong>«Включить»</strong>), заблокирован после 3 попыток (<strong>«Заблокирован»</strong>):</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/widgets_faults.png" alt="widgets_faults.png"></p>
+<h3>Реактор пропал</h3>
+<p>Если реактор пропал из сети (взорвался, сломан адаптер, не прогружен чанк), его виджет показывает <span style="color: #e03e2d;"><strong>«Нет связи»</strong></span> — пока связи нет, программа не может им управлять. Если реактора больше нет, нажмите <strong>«Забыть»</strong>: можно просто освободить номер или <strong>перенумеровать</strong> остальные реакторы, чтобы не было пустого места.</p>
+<p><img style="max-width: 49%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/widget_offline.png" alt="widget_offline.png"> <img style="max-width: 49%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/forget.png" alt="forget.png"></p>
+<h2><span style="color: #236fa1;">Мониторинг реакторов и комплекса</span></h2>
+<p>В виджете каждого реактора отображается:</p>
+<ul>
+<li><strong>Нагрев</strong> — температура реактора</li>
+<li><strong>Ген</strong> — генерация энергии</li>
+<li><strong>Тип</strong> — жидкостный или воздушный</li>
+<li><strong>Статус</strong> — работает, остановлен или причина аварии</li>
+<li><strong>Буфер</strong> — заполнение буфера хладагента в процентах и на сколько <strong>секунд</strong> работы его хватит; слева — вертикальная шкала буфера</li>
+<li><strong>Расход</strong> — реальный расход хладагента в mB/s</li>
+<li><strong>Топливо</strong> — количество стержней и заполнение <strong>самого пустого и самого полного</strong> стержня (мин–макс %)</li>
+<li><strong>Распад</strong> — два времени: <strong>до опустошения первого стержня</strong> (самого пустого) и <strong>до опустошения последнего</strong> (самого полного). Время считается по <span style="color: #169179;"><strong>реальной скорости выгорания</strong></span>, поэтому учитывает <strong>наниты</strong> и другие ускорители. В первые ~30 секунд работы показывается «замер...»</li>
+</ul>
+<p><img style="max-width: 60%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/widget.png" alt="widget.png"></p>
+<p>Справа:</p>
+<ul>
+<li><strong>Информационное окно</strong> — цветной журнал: что запущено, что остановлено и почему, что делать дальше</li>
+<li><strong>Жидкости в МЭ сети</strong> и <strong>порог</strong> (кнопки <strong>+</strong> / <strong>−</strong> для быстрой настройки)</li>
+<li><strong>Вход/выход Flux-сети</strong> (если подключена)</li>
+<li><strong>Генерация всех реакторов</strong></li>
+<li>Время до обновления МЭ и <strong>время работы</strong> программы</li>
+</ul>
+<p>Внизу — <strong>статус комплекса</strong>: количество реакторов, общий расход хладагента и индикатор <strong>Work / Stop</strong>.</p>
+<p>Есть <strong>светлая тема</strong> (включается в настройках):</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/main_light.png" alt="main_light.png"></p>
+<h2><span style="color: #236fa1;">Управление</span></h2>
+<p>Кнопки внизу экрана:</p>
+<ul>
+<li><strong>Гаечный ключ</strong> &mdash; настройки</li>
+<li><strong>Иконка инфо</strong> &mdash; информация: о программе, история изменений, лицензия</li>
+<li><strong><span style="color: #169179;">Запуск реакторов!</span></strong> &mdash; запустить все реакторы</li>
+<li><strong><span style="color: #e03e2d;">Отключить реакторы!</span></strong> &mdash; остановить все реакторы</li>
+<li><strong>Пр.Обновить МЭ</strong> &mdash; сразу обновить данные о хладагенте в МЭ</li>
+<li><strong>Метрика</strong> &mdash; единицы измерения: авто, Rf/Mb, kRf/kMb, mRf/mMb, gRf/gMb</li>
+<li><strong>Рестарт программы</strong> &mdash; перезагрузить компьютер</li>
+<li><strong>Выход из программы</strong> &mdash; остановить реакторы и выйти</li>
+</ul>
+<p>Каждый реактор можно запустить или остановить кнопкой на его виджете.</p>
+<p><strong>Ручное управление через интерфейс реактора</strong> тоже поддерживается: программа заметит, что реактор запустили или остановили вручную, и учтёт это.</p>
+<h3>Окно «Информация»</h3>
+<p>Общая информация о программе, <strong>история изменений</strong> всех версий и лицензия:</p>
+<p><img style="max-width: 49%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/info.png" alt="info.png"> <img style="max-width: 49%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/changelog.png" alt="changelog.png"></p>
+<h3>Команды в чате</h3>
+<p>Если подключён <strong>чат-бокс</strong>, реакторами можно управлять из чата. Команды работают <span style="color: #e67e23;"><strong>только для игроков из белого списка</strong></span>.</p>
+<ul>
+<li><code>@help</code> &mdash; список команд</li>
+<li><code>@status</code> &mdash; статус комплекса: генерация, расход, МЭ, состояние и буфер каждого реактора</li>
+<li><code>@start</code> / <code>@start 2</code> &mdash; запустить все реакторы / реактор №2</li>
+<li><code>@stop</code> / <code>@stop 2</code> &mdash; остановить все реакторы / реактор №2</li>
+<li><code>@setporog 500000</code> &mdash; установить порог хладагента в МЭ (mB)</li>
+<li><code>@useradd Ник</code> / <code>@userdel Ник</code> &mdash; добавить / убрать игрока из белого списка</li>
+<li><code>@forget 2</code> &mdash; забыть пропавший реактор №2 (<code>@forget 2 renum</code> — с перенумерацией)</li>
+<li><code>@changelog</code> &mdash; история изменений</li>
+<li><code>@info</code> &mdash; о программе</li>
+<li><code>@restart</code> / <code>@exit</code> &mdash; перезагрузить компьютер / выйти из программы</li>
+</ul>
+<h3>Текстовый режим</h3>
+<p>Если нужен простой режим без графики:</p>
+<pre><code>/home/reactorcontrol/main.lua --nogui</code></pre>
+<p>Слева — журнал, справа — состояние комплекса и каждого реактора. Управление с клавиатуры: <span style="color: #e67e23;"><strong>s</strong></span> — запустить все, <span style="color: #e67e23;"><strong>x</strong></span> — остановить все, <span style="color: #e67e23;"><strong>1–6</strong></span> — включить/выключить реактор, <span style="color: #e67e23;"><strong>m</strong></span> — обновить МЭ, <span style="color: #e67e23;"><strong>q</strong></span> — выход.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/textmode.png" alt="textmode.png"></p>
+<h2><span style="color: #236fa1;">Ограничения и ответственность</span></h2>
+<blockquote><p><span style="color: #e03e2d;"><strong>Важно!</strong></span> Программа <strong>не проверяет правильность выставленной схемы реакторов</strong>. Если она собрана неверно — риски полностью на вас.</p></blockquote>
+<p>Автор <strong>не несёт ответственности</strong> за взрывы реакторов. Используйте программу <strong>на свой страх и риск</strong>. Разработка является <strong>инди-проектом</strong> и распространяется бесплатно. Программа предоставляется «<strong>как есть</strong>», возможны ошибки и баги (хотя в целом работает стабильно).</p>
+<h2><span style="color: #236fa1;">Авторы и благодарности</span></h2>
+<ul>
+<li>Автор: <strong>P1KaChU337</strong></li>
+<li>Соавтор: <strong>oGoOgO</strong> — за идею программы и отчасти дизайн (элементы интерфейса и их расположение)</li>
+<li>Спасибо за поддержку: <strong>Mega_Killer_002</strong> — тесты, обратная связь и компьютеры с реакторами для тестов; <strong>DroperToper</strong>, <strong>boychhhik666</strong>, <strong>Fiellyns</strong>, <strong>Insonain</strong></li>
+</ul>
+<p>Поддержать проект можно, предварительно связавшись со мной для согласования способа поддержки (на карту, boosty, или иной подарок).<br><br>Исходный код и история изменений: <a href="https://github.com/P1KaChU337/Reactor-Control-for-OpenComputers">github.com/P1KaChU337/Reactor-Control-for-OpenComputers</a></p>
+<h2><span style="color: #236fa1;">Обратная связь</span></h2>
+<p>Если вы нашли баг, недочёт или у вас есть идея для улучшения — напишите:</p>
+<ul>
+<li>Сайт автора: <strong><a href="https://www.pzapps.uz">www.pzapps.uz</a></strong> — <span style="color: #169179;">основной способ связи</span></li>
+<li>VK / Discord: <strong>p1kachu337</strong>, Telegram: <strong>@sh1zurz</strong></li>
+</ul>
+<p>Буду рад, если вы оставите&nbsp;<strong>отзывы о программе</strong> в теме!</p>
