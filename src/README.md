@@ -41,7 +41,7 @@ images/             фоны .pic для тем
 
 Установка с нуля и обновление — одна и та же команда, установщик сам понимает, что делать:
 ```
-wget -fq https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/claude/keen-volta-rnypyl/installer/install_v2.lua /home/rc_install.lua && /home/rc_install.lua
+wget -fq https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/installer/install_v2.lua /home/rc_install.lua && /home/rc_install.lua
 ```
 Обновление уже установленной v2: `/home/reactorcontrol/update.lua` (скачает свежий установщик и запустит его).
 

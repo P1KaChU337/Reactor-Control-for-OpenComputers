@@ -18,7 +18,7 @@ local shell = require("shell")
 local unicode = require("unicode")
 
 local args, opts = shell.parse(...)
-local BRANCH = type(opts.branch) == "string" and opts.branch or "claude/keen-volta-rnypyl"
+local BRANCH = type(opts.branch) == "string" and opts.branch or "main"
 local REPO = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/"
 local BASE = REPO .. BRANCH .. "/"
 local DEST = "/home/reactorcontrol/"

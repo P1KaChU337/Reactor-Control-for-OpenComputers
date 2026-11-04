@@ -13,7 +13,7 @@
 ## Установка и запуск
 
 ```
-wget -f https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/claude/keen-volta-rnypyl/tools/probe/probe.lua /home/probe.lua
+wget -f https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/tools/probe/probe.lua /home/probe.lua
 probe
 ```
 

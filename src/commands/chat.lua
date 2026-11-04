@@ -122,7 +122,7 @@ end
 
 commands["@info"] = function(app)
     say(app, "§bReactor Control v" .. app.VERSION)
-    say(app, "§aАвтор: §eP1KaChU337")
+    say(app, "§aАвтор: §eP1KaChU337 §aСоавтор: §eoGoOgO §7(идея и отчасти дизайн)")
     say(app, "§aСайт: §1www.pzapps.uz")
     say(app, "§aGitHub: §1https://github.com/P1KaChU337/Reactor-Control-for-OpenComputers")
     say(app, "§aИгроки с доступом: §5" .. table.concat(app.cfg.users, ", "))

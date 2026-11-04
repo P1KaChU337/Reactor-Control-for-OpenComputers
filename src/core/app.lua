@@ -17,10 +17,10 @@ local chat = require("commands.chat")
 local App = {}
 App.__index = App
 
-App.VERSION = "2.0.0-dev"
-App.VERSION_SHORT = "2.0-dev"
--- Откуда брать обновления v2 (файл version_v2.txt в корне ветки). После слияния v2 в main — "main".
-App.UPDATE_BRANCH = "claude/keen-volta-rnypyl"
+App.VERSION = "2.0.0"
+App.VERSION_SHORT = "2.0"
+-- Откуда брать обновления v2: version_v2.txt, changelog_v2.lua, about_v2.txt в корне ветки
+App.UPDATE_BRANCH = "main"
 
 -- Интервалы опроса (секунды) и сдвиги, чтобы группы не попадали в один тик
 App.POLL = {
@@ -208,6 +208,7 @@ function App:init()
     local log = self.log
     log:title("------Reactor Control v" .. App.VERSION_SHORT .. "------")
     log:title("Автор приложения: P1KaChU337")
+    log:title("Соавтор: oGoOgO (идея, дизайн)")
     log:title("Версия приложения: " .. App.VERSION)
     for _, w in ipairs(self.cfgInfo.warnings) do log:warn(w) end
     if self.cfgInfo.source == "legacy" then

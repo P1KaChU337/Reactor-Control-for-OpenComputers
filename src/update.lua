@@ -3,7 +3,7 @@
 local shell = require("shell")
 local fs = require("filesystem")
 local args, opts = shell.parse(...)
-local BRANCH = type(opts.branch) == "string" and opts.branch or "claude/keen-volta-rnypyl"
+local BRANCH = type(opts.branch) == "string" and opts.branch or "main"
 local URL = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/" .. BRANCH .. "/installer/install_v2.lua"
 local PATH = "/home/rc_install.lua"
 print("Загрузка установщика...")

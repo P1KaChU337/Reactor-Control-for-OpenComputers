@@ -7,12 +7,12 @@ emu.install("../../src", "/home/reactorcontrol")
 local REPO = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/"
 local rf = function(p) local f = assert(rawget(_G, "__EMU_RAW_OPEN__") and nil or io.popen("cat ../../" .. p)) local d = f:read("a") f:close() return d end
 emu.http = {
-    [REPO .. "claude/keen-volta-rnypyl/about_v2.txt"] = rf("about_v2.txt"):gsub("Спасибо за поддержку:", "Спасибо за поддержку (с GitHub):"),
+    [REPO .. "main/about_v2.txt"] = rf("about_v2.txt"):gsub("Спасибо за поддержку:", "Спасибо за поддержку (с GitHub):"),
     [REPO .. "main/changelog.lua"] = rf("changelog.lua"),
-    [REPO .. "claude/keen-volta-rnypyl/version_v2.txt"] = "2.0.1\n",
-    [REPO .. "claude/keen-volta-rnypyl/changelog_v2.lua"] = rf("changelog_v2.lua"):gsub("}%s*$", "") ..
+    [REPO .. "main/version_v2.txt"] = "2.0.1\n",
+    [REPO .. "main/changelog_v2.lua"] = rf("changelog_v2.lua"):gsub("}%s*$", "") ..
         '  {version = "2.0.1", changes = {"Новая кнопка, которой раньше не было", "Исправлена ошибка, из-за которой что-то ломалось при определённых условиях на сервере"}},\n}\n',
-    [REPO .. "claude/keen-volta-rnypyl/installer/install_v2.lua"] = rf("installer/install_v2.lua"),
+    [REPO .. "main/installer/install_v2.lua"] = rf("installer/install_v2.lua"),
 }
 local fs = require("filesystem")
 fs.makeDirectory("/home/reactorcontrol/data")

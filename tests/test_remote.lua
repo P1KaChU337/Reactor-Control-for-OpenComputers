@@ -66,7 +66,7 @@ end)
 
 T.test("remote: changelog_v2.lua разбирается, в окно обновления идут только версии новее текущей", function()
     local list = remote.parseChangelog(io.open("changelog_v2.lua"):read("a"))
-    T.ok(list and #list >= 1); T.eq(list[1].version, "2.0.0-dev")
+    T.ok(list and #list >= 1); T.eq(list[1].version, "2.0.0")
     local all = {{version = "2.0.0-dev", changes = {"a"}}, {version = "2.0.0", changes = {"b"}},
         {version = "2.0.1", changes = {"c"}}, {version = "2.1.0", changes = {"d"}}}
     local notes = remote.notesBetween(all, "2.0.0-dev", "2.0.1")

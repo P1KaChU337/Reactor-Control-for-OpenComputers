@@ -4,7 +4,7 @@ local emu = __EMU__
 local mocks = require("mocks")
 local OUT = os.getenv("EMU_OUT") or "/tmp/rc_emu_out"
 io.popen("mkdir -p " .. OUT):close()
-local BASE = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/claude/keen-volta-rnypyl/"
+local BASE = "https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/"
 emu.http = setmetatable({}, {__index = function(_, url)
     if url:sub(1, #BASE) ~= BASE then return nil end
     local f = io.open("/__repo__/" .. url:sub(#BASE + 1), "rb")
