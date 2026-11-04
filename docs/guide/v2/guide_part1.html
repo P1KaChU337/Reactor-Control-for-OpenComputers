@@ -1,0 +1,67 @@
+<p><strong>Reactor Control v2.0 by P1KaChU337</strong></p>
+<p>Представляю программу <strong>мониторинга, контроля и защиты реакторного комплекса</strong> для игроков сервера <strong><span style="color: #e67e23;">McSkill HiTech 1.12.2</span></strong> на основе мода <strong><span style="color: #169179;">OpenComputers</span></strong>.</p>
+<p>Версия <strong>2.0</strong> написана с нуля: защита реакторов стала <span style="color: #169179;"><strong>точнее</strong></span> и работает <span style="color: #169179;"><strong>всегда</strong></span>, интерфейс быстрее и информативнее, а установка и обновление&nbsp;<strong>в одну команду</strong>.</p>
+<p>В этом гайде подробно описано, <strong>как собрать и настроить компьютер</strong>, <strong>как установить программу</strong> и <strong>как она защищает ваши реакторы</strong>.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/main.png" alt="main.png"></p>
+<h2><span style="color: #236fa1;">Сборка и настройка компьютера</span></h2>
+<p>Для корректной работы программы необходимо собрать компьютер со следующими компонентами:</p>
+<ul>
+<li>Монитор <strong>3 уровня</strong></li>
+<li>Серверная стойка (<span style="color: #e67e23;"><strong>не системный блок</strong></span>)</li>
+<li>Сервер <strong>3 уровня</strong></li>
+<li>Клавиатура</li>
+<li>Компонентные шины <strong>2 шт.</strong></li>
+<li>ОЗУ <strong>3.5 / 4 шт.</strong></li>
+<li>Видеокарта <strong>3 уровня</strong></li>
+<li>Интернет-карта</li>
+<li>EEPROM с <strong>Lua BIOS</strong></li>
+<li>Жёсткий диск <strong>3 уровня</strong></li>
+<li>Процессор <strong>3 уровня</strong></li>
+<li>Дисковод с дискетой <strong>OpenOS</strong></li>
+<li><span style="color: #34495e;"><em>По желанию:</em></span> <strong>чат-бокс</strong> — для управления реакторами командами из чата</li>
+</ul>
+<p>Все компоненты соединяются в стойке. Пример сборки:</p>
+<p><img style="width: 549px; height: 315px;" src="https://img.mcskill.net/guides/b1/b1c6d723cc85db0bdc5c35424b72a1d574ffdac9647adc0d1bea120c4ce3f0d5.png" alt="Сервер"><img style="width: 552px; height: 309px;" src="https://img.mcskill.net/guides/06/06a0e9dd2cecfa3cf559ba90d2b33cc4a0b15c2376e5fe8439cc1c1c60e1273e.png" alt="Серверная стойка"></p>
+<p>Установите мониторы (их можно покрасить красителем) в удобном месте, разместите клавиатуру и серверную стойку рядом, затем подключите всё кабелями:</p>
+<p><img style="max-width: 100%;" src="https://img.mcskill.net/guides/3f/3f8067cefc767ab7ac8a76d239b47c14ce51a678438685277ca38d0be50992dc.png" alt="Подключение"></p>
+<h2><span style="color: #236fa1;">Установка OpenOS и программы</span></h2>
+<h3>1. Установка OpenOS</h3>
+<ul>
+<li>Запустите компьютер и введите <strong>install</strong></li>
+<li>Подтвердите установку нажатием <strong>Enter 2 раза</strong></li>
+<li>Дождитесь перезапуска компьютера</li>
+</ul>
+<h3>2. Установка Reactor Control</h3>
+<p>Введите команду:</p>
+<pre><code>wget -fq https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/installer/install_v2.lua /home/rc_install.lua &amp;&amp; /home/rc_install.lua</code></pre>
+<p>Откроется <strong>установщик</strong>. Он проверит компьютер (интернет-карта, видеокарта и монитор, память) и покажет, что будет сделано. Галочка <strong>«Запускать при включении компьютера»</strong> включена по умолчанию — программа будет стартовать сама после перезагрузки сервера. Нажмите <strong><span style="color: #236fa1;">«Установить»</span></strong>.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/installer_confirm.png" alt="installer_confirm.png"></p>
+<p>После загрузки нажмите <strong><span style="color: #236fa1;">«Перезагрузить и запустить»</span></strong>.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/installer_done.png" alt="installer_done.png"></p>
+<h3>3. Первый запуск</h3>
+<p>При первом запуске откроется окно <strong>настроек</strong>:</p>
+<ul>
+<li><span style="color: #e03e2d;"><strong>Обязательно добавьте свой никнейм</strong></span> (и ники тех, кому нужен доступ) в <strong>белый список</strong> — кроме этих игроков никто не сможет пользоваться компьютером и командами в чате</li>
+<li>Укажите <strong>порог хладагента в МЭ</strong> (в mB) — ниже него жидкостные реакторы будут остановлены</li>
+<li>Выберите тему (тёмная / светлая), включите или выключите проверку обновлений и автозапуск реакторов</li>
+<li>Нажмите <strong>«Сохранить и выйти»</strong></li>
+</ul>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/settings.png" alt="settings.png"></p>
+<p>Настройки можно поменять в любой момент фиолетовой кнопкой <strong>с гаечным ключом</strong> в левом нижнем углу. Редактировать файлы руками больше не нужно.</p>
+<blockquote><p><strong>Уже стоит версия 1.x?</strong> Ничего делать не нужно: при включённой проверке обновлений программа <span style="color: #169179;"><strong>сама предложит обновиться до 2.0</strong></span>. Порог, список игроков и тема перенесутся автоматически. Можно и просто выполнить команду установки выше.</p></blockquote>
+<h3>Обновления</h3>
+<p>Программа <strong>сама проверяет обновления раз в час</strong>. Если вышла новая версия, откроется окно <strong>«Доступно обновление»</strong> со списком изменений. Нажмите <strong><span style="color: #236fa1;">«Обновить»</span></strong> — реакторы будут остановлены, программа обновится, компьютер перезагрузится и всё запустится заново. Настройки сохраняются.</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/docs/guide/v2/update.png" alt="update.png"></p>
+<p>Обновить вручную: <code>/home/reactorcontrol/update.lua</code></p>
+<h2><span style="color: #236fa1;">Подключение реакторов и сетей</span></h2>
+<p>Программа поддерживает работу с:</p>
+<ul>
+<li><strong>Реакторами</strong> (через адаптер) — <strong>до 6 реакторов</strong></li>
+<li><strong>МЭ-сетью</strong> (через адаптер к <strong>контроллеру</strong> или <strong>МЭ-интерфейсу</strong>) — для контроля запаса хладагента</li>
+<li><strong>Flux-сетью</strong> (через адаптер к <strong>контроллеру</strong>, <span style="color: #e67e23;">не к разъёмам или хранилищу</span>) — для отображения входа и выхода энергии</li>
+</ul>
+<p>Пример подключения адаптера к реактору:</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/guide/reaktor.png" alt="reaktor.png"></p>
+<p>Адаптеры можно подключить и с помощью поставщиков:</p>
+<p><img style="max-width: 100%;" src="https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenComputers/main/guide/postavchik.png" alt="postavchik.png"></p>
+<p>Реакторы и сети можно подключать и отключать <strong>во время работы программы</strong> — она найдёт их сама. Каждый реактор получает <span style="color: #169179;"><strong>постоянный номер</strong></span>, который не меняется после перезагрузки.</p>
