@@ -129,16 +129,20 @@ commands["@info"] = function(app)
 end
 
 commands["@changelog"] = function(app, args)
-    local list = app.remote and app.remote.changelog
-    if not list then say(app, "§cИстория изменений ещё не загружена (нужна интернет-карта)") return end
+    local list = {}
+    for _, src in ipairs({app.remote and app.remote.changelogV2 or {}, app.remote and app.remote.changelog or {}}) do
+        for _, e in ipairs(src) do list[#list + 1] = e end
+    end
+    if #list == 0 then say(app, "§cИстория изменений ещё не загружена (нужна интернет-карта)") return end
     local want = args:match("^(%S+)")
     if want then
         for _, e in ipairs(list) do
             if e.version == want then
                 say(app, "§eИзменения в версии " .. e.version .. ":")
                 for i, c in ipairs(e.changes) do
-                    if i > M.MAX_SAY then say(app, "§7...") break end
-                    say(app, "§a- " .. c)
+                    if i > M.MAX_SAY * 2 then say(app, "§7... полный список — в окне «Информация»") break end
+                    local title = c:match("^#%s*(.+)$")
+                    say(app, title and ("§e" .. title .. ":") or ("§a • " .. c))
                 end
                 return
             end

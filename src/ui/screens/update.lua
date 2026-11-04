@@ -31,7 +31,13 @@ local function lines(app)
         for _, e in ipairs(notes) do
             out[#out + 1] = {"Версия " .. e.version .. ":", T.purpleDark}
             for _, c in ipairs(e.changes) do
-                for _, l in ipairs(wrap("• " .. c, W - 8, "  ")) do out[#out + 1] = {l, 0x111111} end
+                local title = c:match("^#%s*(.+)$")
+                if title then
+                    out[#out + 1] = {"", 0}
+                    out[#out + 1] = {title .. ":", 0x000000}
+                else
+                    for _, l in ipairs(wrap("  • " .. c, W - 8, "    ")) do out[#out + 1] = {l, 0x333333} end
+                end
             end
             out[#out + 1] = {"", 0}
         end
