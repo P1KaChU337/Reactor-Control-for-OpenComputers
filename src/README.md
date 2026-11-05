@@ -53,3 +53,5 @@ wget -fq https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenCo
 lua5.3 tests/run.lua                 # модульные тесты (из корня репозитория)
 cd tools/emu && lua5.3 emu.lua scenarios/v2_smoke.lua   # вся программа в эмуляторе
 ```
+
+Подробная техническая документация по всем модулям: [docs/TECH.md](../docs/TECH.md).

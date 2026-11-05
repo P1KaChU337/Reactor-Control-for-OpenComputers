@@ -73,6 +73,8 @@ wget -fq https://raw.githubusercontent.com/P1KaChU337/Reactor-Control-for-OpenCo
 
 ## Для разработки
 
+**Техническая документация** (все модули, функции, настройки, выпуск версий): [`docs/TECH.md`](./docs/TECH.md).
+
 Исходники v2 — в [`src/`](./src/README.md). Проверка без игры: модульные тесты `lua5.3 tests/run.lua`
 и эмулятор OpenComputers [`tools/emu`](./tools/emu/README.md) со сценариями и скриншотами.
 
