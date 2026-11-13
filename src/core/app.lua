@@ -252,8 +252,10 @@ function App:step(maxWait)
     if name then
         if name == "component_added" or name == "component_removed" then
             self.scheduler:runSoon("scan", 0.5)
+        elseif name == "key_down" then
+            self.lastKeyPlayer = ev[5]   -- кто нажимал клавиши последним: для проверки Ctrl+C / Ctrl+Alt+C
         elseif name == "interrupted" then
-            self.running = false
+            if self:interruptAllowed() then self.running = false end
         end
         local h = self.handlers[name]
         if h then
@@ -266,6 +268,14 @@ function App:step(maxWait)
         local ok, err = pcall(self.onFrame)
         if not ok then self.log:error("Отрисовка: " .. tostring(err)) end
     end
+end
+
+-- Прерывание (Ctrl+C / Ctrl+Alt+C) разрешено, только если последним клавиши нажимал игрок из белого списка
+-- (пустой белый список — всем). Чужое прерывание игнорируется и пишется в журнал.
+function App:interruptAllowed()
+    if self.actions:canUse(self.lastKeyPlayer) then return true end
+    self.log:warn("Игрок " .. tostring(self.lastKeyPlayer) .. " не в белом списке: прерывание программы запрещено")
+    return false
 end
 
 function App:requestExit() self.exitReason = "exit" self.running = false end
@@ -282,9 +292,14 @@ function App:run()
     while self.running do
         local ok, err = xpcall(function() self:step() end, debug.traceback)
         if not ok then
-            if tostring(err):find("interrupted") then break end
-            -- ошибка одного шага не роняет программу и не перезапускает её
-            self.log:error("Ошибка цикла: " .. tostring(err):sub(1, 300))
+            -- Ctrl+Alt+C (OpenOS кидает "interrupted" прямо из event.pull): выйти можно только игроку из белого списка,
+            -- иначе посторонний остановил бы реакторы и получил shell
+            if tostring(err):find("interrupted") then
+                if self:interruptAllowed() then break end
+            else
+                -- ошибка одного шага не роняет программу и не перезапускает её
+                self.log:error("Ошибка цикла: " .. tostring(err):sub(1, 300))
+            end
         end
     end
     self:shutdown()

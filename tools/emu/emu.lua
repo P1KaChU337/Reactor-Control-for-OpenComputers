@@ -309,11 +309,14 @@ local function popEvent(filter)
         if ev[1] <= emu.time + 1e-9 and filter(ev) then
             table.remove(emu.queue, i)
             for _, l in ipairs(listeners) do if l.name == ev[2] then l.cb(table.unpack(ev, 2)) end end
+            if ev.hardInterrupt then emu.hardPending = true end
             return ev
         end
     end
 end
 local function pullWith(timeout, filter)
+    -- Ctrl+Alt+C, как в OpenOS event.lua: после нажатия C следующий pull кидает ошибку "interrupted"
+    if emu.hardPending then emu.hardPending = false error("interrupted", 0) end
     -- как в OC: даже pull(0) отдаёт управление до следующего тика
     if timeout and timeout < 0.05 then timeout = 0.05 end
     local deadline = emu.time + (timeout or math.huge)
@@ -577,6 +580,14 @@ function emu.runVirtual(vpath, ...)
     return true
 end
 function emu.interrupt() computer.pushSignal("interrupted", emu.time) end
+-- Ctrl+Alt+C от игрока nick: нажатия Ctrl, Alt, C (с ником), затем жёсткое прерывание
+function emu.hardInterrupt(nick)
+    nick = nick or emu.nick
+    computer.pushSignal("key_down", "keyboard-0", 0, 29, nick)
+    computer.pushSignal("key_down", "keyboard-0", 0, 56, nick)
+    computer.pushSignal("key_down", "keyboard-0", 99, 46, nick)
+    emu.queue[#emu.queue].hardInterrupt = true
+end
 
 local scenario = assert(arg[1], "usage: emu.lua <scenario.lua>")
 return rawDofile(scenario)

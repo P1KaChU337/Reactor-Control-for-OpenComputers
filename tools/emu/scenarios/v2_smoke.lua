@@ -48,7 +48,7 @@ emu.at(300, function() emu.removeComponent(reactors[1]) end)
 emu.at(310, function() report("реактор 1 пропал") end)
 emu.at(320, function() emu.addComponent(reactors[1]) end)
 emu.at(330, function() report("реактор 1 вернулся") end)
-emu.at(340, function() emu.interrupt() end)
+emu.at(340, function() emu.key(0, 29, "Player") emu.interrupt() end)   -- Ctrl+C от игрока из белого списка
 emu.endTime = 345
 
 -- выставить __RC_APP__: оборачиваем App.new

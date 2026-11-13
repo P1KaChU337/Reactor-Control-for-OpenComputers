@@ -31,10 +31,17 @@ emu.at(8, function() emu.online.Marsik = true end)              -- Marsik заш
 emu.at(50, function() check(users() == "Marsik", "доступ выдан, когда Marsik зашёл: " .. users()) end)
 emu.at(51, function() emu.touch(50, 45, "Marsik") end)
 emu.at(53, function() check(rs[1].state.active, "Marsik запустил реакторы") end)
-emu.at(54, function()
-    local log = io.open("/home/reactorcontrol/data/reactor.log") and io.open("/home/reactorcontrol/data/reactor.log"):read("a") or ""
-    check(true, "журнал записан")
-end)
-emu.at(55, function() io.stderr:write(fails == 0 and "ALL OK\n" or ("FAILED: " .. fails .. "\n")) end)
-emu.endTime = 56
+-- Ctrl+Alt+C и Ctrl+C от чужого: программа работает дальше, реакторы не трогаются
+emu.at(54, function() emu.hardInterrupt("Anton9696") end)
+emu.at(56, function() emu.key(0, 29, "Anton9696") emu.interrupt() end)
+emu.at(58, function() check(rs[1].state.active and rs[2].state.active, "чужое прерывание проигнорировано, реакторы работают") end)
+emu.at(58.5, function() emu.touch(50, 45, "Marsik") end)   -- программа ещё отвечает
+emu.at(59, function() check(emu.screenText():find("Реакторы запущены") or emu.screenText():find("уже запущены"), "программа жива и отвечает") end)
+-- Ctrl+Alt+C от игрока из белого списка: выход, реакторы останавливаются (как раньше)
+emu.at(60, function() emu.hardInterrupt("Marsik") end)
+emu.endTime = 64
 emu.runVirtual("/home/reactorcontrol/main.lua")
+-- программа завершилась (Ctrl+Alt+C от Marsik в 60 с)
+check(emu.time < 63, "Marsik прервал программу (вышла в " .. string.format("%.1f", emu.time) .. " с)")
+check(not rs[1].state.active and not rs[2].state.active, "при выходе реакторы остановлены")
+io.stderr:write(fails == 0 and "ALL OK\n" or ("FAILED: " .. fails .. "\n"))
