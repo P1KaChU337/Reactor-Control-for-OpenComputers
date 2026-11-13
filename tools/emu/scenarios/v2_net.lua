@@ -1,5 +1,6 @@
 -- v2: бегущая строка спонсоров, changelog с GitHub, проверка обновлений, чат-команды
 local emu = __EMU__
+emu.nick = "Boss"   -- нажимает игрок из белого списка
 local mocks = require("mocks")
 local OUT = os.getenv("EMU_OUT") or "/tmp/rc_emu_out"
 io.popen("mkdir -p " .. OUT):close()

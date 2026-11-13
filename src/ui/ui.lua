@@ -119,7 +119,20 @@ function UI:frame(force)
     return true
 end
 
+-- Чужим (не из белого списка) интерфейс не отвечает. Пустой белый список — пускаем всех.
+function UI:allowed(player)
+    if self.app.actions:canUse(player) then return true end
+    local now = self:clock()
+    self.denied = self.denied or {}
+    if (self.denied[player or "?"] or -math.huge) + 60 <= now then
+        self.denied[player or "?"] = now
+        self.app.log:warn("Игрок " .. tostring(player) .. " не в белом списке: управление запрещено")
+    end
+    return false
+end
+
 function UI:touch(x, y, button, player)
+    if not self:allowed(player) then return false end
     for i = #self.hits, 1, -1 do
         local h = self.hits[i]
         if x >= h.x1 and x <= h.x2 and y >= h.y1 and y <= h.y2 then
@@ -139,6 +152,7 @@ function UI:touch(x, y, button, player)
 end
 
 function UI:key(char, code, player)
+    if not self:allowed(player) then return end
     if self.modal and self.modal.key then
         self.modal.key(self, char, code, player)
         self:invalidate()
@@ -146,6 +160,7 @@ function UI:key(char, code, player)
 end
 
 function UI:scroll(x, y, dir, player)
+    if not self:allowed(player) then return end
     if self.modal and self.modal.scroll then
         self.modal.scroll(self, x, y, dir)
         self:invalidate()

@@ -39,9 +39,19 @@ end
 
 local function close(ui) draft = nil ui:closeModal() end
 
-local function save(ui)
+local function save(ui, player)
     local app = ui.app
     local cfg = app.cfg
+    -- не дать запереть себя: сохраняющий должен быть в непустом белом списке
+    if player and #draft.users > 0 then
+        local found = false
+        for _, n in ipairs(draft.users) do if n == player then found = true end end
+        if not found then
+            draft.nickHint = "Добавьте себя: " .. player
+            app.log:warn("Настройки не сохранены: добавьте свой ник " .. player .. " в белый список")
+            return
+        end
+    end
     local thr = tonumber(draft.threshold)
     if thr then cfg.threshold = math.floor(thr) end
     cfg.theme = draft.theme and "light" or "dark"
@@ -102,7 +112,7 @@ function M.draw(ui)
     toggleRow(ui, "swDebug", 15, "Расширенное логирование", "Включено", "debugLog")
     toggleRow(ui, "swAuto", 19, "Автозапуск реакторов", "Включён", "autoRestart")
 
-    ui:button("save", X + 5, Y + H - 4, 18, "Сохранить и выйти", ui:isPressed("save") and T.purple or T.purpleDark, 0xffffff, function() save(ui) end)
+    ui:button("save", X + 5, Y + H - 4, 18, "Сохранить и выйти", ui:isPressed("save") and T.purple or T.purpleDark, 0xffffff, function(_, _, player) save(ui, player) end)
     G.text(X + 1, Y + H - 1, 0x999999, "P.S. Нажмите в любом месте вне окна, чтобы выйти без сохранения")
 
     -- белый список

@@ -1,5 +1,6 @@
 -- Реактор взорвался: после перезапуска его номер виден как "нет связи", его можно забыть с перенумерацией
 local emu = __EMU__
+emu.nick = "Boss"   -- нажимает игрок из белого списка
 local mocks = require("mocks")
 local OUT = os.getenv("EMU_OUT") or "/tmp/rc_emu_out"
 emu.install("../../src", "/home/reactorcontrol")

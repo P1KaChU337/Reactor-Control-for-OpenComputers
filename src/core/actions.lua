@@ -248,36 +248,77 @@ function Actions:setThreshold(v)
 end
 
 -- Белый список игроков -> computer.addUser/removeUser
+-- Белый список -> пользователи компьютера (computer.addUser/removeUser).
+-- Истина — реальный список computer.users(), а не записи в конфиге: доступ мог не выдаться
+-- (OpenComputers выдаёт его только игроку в сети), компьютер могли заменить и т.п.
+-- Кому не удалось выдать — пробуем снова (app вызывает это раз в 30 с), предупреждение пишется один раз.
 function Actions:syncUsers()
     local cfg, log, computer = self.app.cfg, self.app.log, self.app.computer
-    if not computer or not computer.addUser then return end
+    if not computer or not computer.addUser then return true end
+    self.userWarned = self.userWarned or {}
     local want, have = {}, {}
     for _, n in ipairs(cfg.users) do want[n] = true end
-    for _, n in ipairs(cfg.usersApplied) do have[n] = true end
-    local changed = false
+    -- computer.users() возвращает имена несколькими значениями (в OpenOS); таблицу тоже понимаем
+    local res = computer.users and table.pack(pcall(computer.users)) or {false}
+    if res[1] then
+        if type(res[2]) == "table" then
+            for _, n in ipairs(res[2]) do have[n] = true end
+        else
+            for i = 2, res.n do if type(res[i]) == "string" then have[res[i]] = true end end
+        end
+    else
+        for _, n in ipairs(cfg.usersApplied) do have[n] = true end
+    end
+    local missing = 0
     for _, n in ipairs(cfg.users) do
         if not have[n] then
             local ok, err = computer.addUser(n)
             if ok then
-                cfg.usersApplied[#cfg.usersApplied + 1] = n
-                log:ok("Добавлен пользователь: " .. n)
-                changed = true
+                have[n] = true
+                self.userWarned[n] = nil
+                log:ok("Доступ к компьютеру выдан: " .. n)
             else
-                log:warn("Не удалось добавить " .. n .. ": " .. tostring(err))
+                missing = missing + 1
+                if not self.userWarned[n] then
+                    self.userWarned[n] = true
+                    log:warn("Не удалось выдать доступ " .. n .. " (" .. tostring(err) .. "), повторю, когда игрок зайдёт")
+                end
             end
         end
     end
-    for i = #cfg.usersApplied, 1, -1 do
-        local n = cfg.usersApplied[i]
-        if not want[n] then
-            computer.removeUser(n)
-            table.remove(cfg.usersApplied, i)
-            log:info("Удалён пользователь: " .. n)
-            changed = true
+    -- лишних убираем, только если белый список не пуст (иначе компьютер открыт для всех — так задумано)
+    if #cfg.users > 0 then
+        for n in pairs(have) do
+            if not want[n] then
+                pcall(computer.removeUser, n)
+                have[n] = nil
+                log:info("Доступ к компьютеру убран: " .. n)
+            end
         end
     end
-    if #cfg.users == 0 then log:warn("Компьютер не защищён: добавьте игроков в белый список") end
-    if changed then self.app.saveConfig() end
+    local applied = {}
+    for _, n in ipairs(cfg.users) do if have[n] then applied[#applied + 1] = n end end
+    local changed = #applied ~= #cfg.usersApplied
+    for i, n in ipairs(applied) do if cfg.usersApplied[i] ~= n then changed = true end end
+    if changed then
+        cfg.usersApplied = applied
+        self.app.saveConfig()
+    end
+    if #cfg.users == 0 and not self.openWarned then
+        self.openWarned = true
+        log:warn("Компьютер не защищён: добавьте игроков в белый список")
+    elseif #cfg.users > 0 then
+        self.openWarned = nil
+    end
+    return missing == 0
+end
+
+-- Может ли игрок управлять программой (кнопки, клавиатура). Пустой белый список — могут все.
+function Actions:canUse(player)
+    local users = self.app.cfg.users
+    if #users == 0 then return true end
+    for _, n in ipairs(users) do if n == player then return true end end
+    return false
 end
 
 function Actions:addUser(name)

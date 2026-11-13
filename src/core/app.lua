@@ -17,7 +17,7 @@ local chat = require("commands.chat")
 local App = {}
 App.__index = App
 
-App.VERSION = "2.0.0"
+App.VERSION = "2.0.1"
 App.VERSION_SHORT = "2.0"
 -- Откуда брать обновления v2: version_v2.txt, changelog_v2.lua, about_v2.txt в корне ветки
 App.UPDATE_BRANCH = "main"
@@ -153,6 +153,8 @@ function App:schedule()
     end, P.flux[2])
     s:every("scan", P.scan[1], function() self:scan() end, P.scan[2])
     s:every("logflush", P.logflush[1], function() self.log:flush() end, P.logflush[2])
+    -- доступ к компьютеру: дозаписать тех, кому не удалось выдать (игрок был не в сети), и сверить список
+    s:every("users", 30, function() self.actions:syncUsers() end, 15)
     -- сеть: запросы продвигаются шагами, данные с GitHub обновляются редко
     s:every("net", 0.25, function()
         if self.http:busy() then self.http:step() end

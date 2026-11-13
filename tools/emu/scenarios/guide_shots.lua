@@ -1,5 +1,6 @@
 -- Скриншоты для гайда на форуме: всё снимается настоящей программой v2 в эмуляторе
 local emu = __EMU__
+emu.nick = "P1KaChU337"   -- нажимает игрок из белого списка
 local mocks = require("mocks")
 local OUT = os.getenv("EMU_OUT") or "/tmp/rc_emu_out"
 io.popen("mkdir -p " .. OUT):close()

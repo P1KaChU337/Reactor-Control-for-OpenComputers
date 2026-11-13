@@ -63,8 +63,22 @@ local preload = package.preload
 
 local computer = {}
 function computer.uptime() return emu.time end
-function computer.addUser(n) trace("addUser", n) return true end
-function computer.removeUser(n) trace("removeUser", n) return true end
+-- Пользователи компьютера как в OC: addUser работает только для игрока в сети (emu.online; nil — все в сети),
+-- users() возвращает имена несколькими значениями
+emu.users = {}
+emu.online = nil
+function computer.addUser(n)
+    if emu.online and not emu.online[n] then trace("addUser", n, "offline") return nil, "player must be online" end
+    for _, u in ipairs(emu.users) do if u == n then return true end end
+    emu.users[#emu.users + 1] = n
+    trace("addUser", n)
+    return true
+end
+function computer.removeUser(n)
+    for i, u in ipairs(emu.users) do if u == n then table.remove(emu.users, i) trace("removeUser", n) return true end end
+    return false
+end
+function computer.users() return table.unpack(emu.users) end
 function computer.getArchitecture() return "Lua 5.3" end
 function computer.totalMemory() return 4 * 1024 * 1024 end
 function computer.freeMemory() return 2 * 1024 * 1024 end
@@ -508,9 +522,10 @@ sh("mkdir -p " .. emu.root .. "/home/images && cp " .. REPO .. "/home/images/*.p
 -- API сценария
 ---------------------------------------------------------------------------
 function emu.at(t, fn) table.insert(emu.actions, {t, fn}) end
-function emu.touch(x, y, nick) computer.pushSignal("touch", "screen-0", x, y, 0, nick or "Player") end
+emu.nick = "Player"   -- кто нажимает по умолчанию (сценарий может поменять)
+function emu.touch(x, y, nick) computer.pushSignal("touch", "screen-0", x, y, 0, nick or emu.nick) end
 function emu.chat(nick, msg) computer.pushSignal("chat_message", "chatbox-0", nick, msg) end
-function emu.key(char, code) computer.pushSignal("key_down", "keyboard-0", char, code, "Player") end
+function emu.key(char, code, nick) computer.pushSignal("key_down", "keyboard-0", char, code, nick or emu.nick) end
 function emu.dump(path)
     local f = rawOpen(path, "w")
     f:write(W, " ", H, "\n")

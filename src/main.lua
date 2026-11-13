@@ -56,7 +56,11 @@ if nogui then
         app.tui = tui
     end
     -- управление с клавиатуры
-    app:on("key_down", function(_, _, char)
+    app:on("key_down", function(_, _, char, _, player)
+        if not app.actions:canUse(player) then
+            app.log:warn("Игрок " .. tostring(player) .. " не в белом списке: управление запрещено")
+            return
+        end
         local c = char and char > 0 and string.char(char):lower() or ""
         if c == "s" then app.actions:start(nil, "клавиатура")
         elseif c == "x" then app.actions:stop(nil, "клавиатура")

@@ -35,7 +35,7 @@ function T.clock(start)
 end
 
 T.filter = arg[1]
-local files = {"test_serialize", "test_config", "test_scheduler", "test_rate", "test_protection", "test_hw", "test_braille", "test_format", "test_installer", "test_remote", "test_chat"}
+local files = {"test_serialize", "test_config", "test_scheduler", "test_rate", "test_protection", "test_hw", "test_braille", "test_format", "test_installer", "test_remote", "test_chat", "test_users"}
 for _, f in ipairs(files) do
     package.loaded[f] = nil
     require(f)

@@ -1,5 +1,6 @@
 -- Скриншот текстового режима (--nogui) для гайда
 local emu = __EMU__
+emu.nick = "P1KaChU337"   -- нажимает игрок из белого списка
 local mocks = require("mocks")
 local OUT = os.getenv("EMU_OUT") or "/tmp/rc_emu_out"
 emu.install("../../src", "/home/reactorcontrol")
